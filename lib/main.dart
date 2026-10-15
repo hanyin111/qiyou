@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'app_state.dart';
 import 'ui/design.dart';
 import 'ui/dashboard.dart';
@@ -8,6 +10,11 @@ import 'ui/dialogs.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  LicenseRegistry.addLicense(() async* {
+    final text = await rootBundle.loadString('assets/fonts/LICENSE.txt');
+    yield LicenseEntryWithLineBreaks(
+        ['HarmonyOS Sans SC'], text.replaceAll('\u0000', ''));
+  });
   runApp(QiyouApp());
 }
 

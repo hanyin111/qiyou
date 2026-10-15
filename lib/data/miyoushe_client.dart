@@ -168,7 +168,9 @@ class MiyousheClient {
             'uid': role.uid
           },
           game: role.game);
-      return SignStatus.signed;
+      if ((await signInfo(account, role)).isDone) return SignStatus.signed;
+      throw const MiyousheException(
+          ApiFailure.protocol, '签到请求已提交，但官方状态尚未确认。请刷新查看，暂勿重复签到。');
     } on _AlreadySigned {
       return SignStatus.alreadySigned;
     }
@@ -252,8 +254,8 @@ class MiyousheClient {
             ApiFailure.verification, '需要在米游社完成安全验证。完成后再回到栖游重试。');
       }
       if (code != 0) {
-        throw const MiyousheException(
-            ApiFailure.protocol, '米游社暂时无法提供这项数据，请检查登录状态或稍后重试。');
+        throw MiyousheException(ApiFailure.protocol,
+            '米游社暂时无法提供这项数据（错误码 ${code ?? '未知'}），请检查登录状态或稍后重试。');
       }
       return data;
     } on MiyousheException {

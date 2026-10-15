@@ -3,6 +3,7 @@ import '../app_state.dart';
 import '../domain/models.dart';
 import '../data/miyoushe_client.dart';
 import 'design.dart';
+import 'official_login.dart';
 
 Future<void> showGameDetails(BuildContext context, AppState state,
     GameEntry entry, ValueChanged<String> toast) async {
@@ -119,6 +120,7 @@ class _ConnectDialogState extends State<ConnectDialog> {
   final input = TextEditingController();
   String? error;
   bool saving = false;
+  bool consent = false;
   @override
   void dispose() {
     input.clear();
@@ -142,12 +144,34 @@ class _ConnectDialogState extends State<ConnectDialog> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                    Text('让各个世界的日常，都来到这里。',
+                    Text('登录后读取已绑定角色和游戏状态。',
                         style: TextStyle(
                             fontSize: 13, color: context.palette.secondary)),
                     SizedBox(height: 23),
                     if (canConnect) ...[
-                      Text('登录凭证（Cookie）',
+                      if (supportsOfficialLogin) ...[
+                        SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                                onPressed: saving || !consent
+                                    ? null
+                                    : () async {
+                                        final connected =
+                                            await Navigator.of(context)
+                                                .push<bool>(MaterialPageRoute(
+                                                    builder: (_) =>
+                                                        OfficialLoginPage(
+                                                            widget.state)));
+                                        if (connected == true &&
+                                            context.mounted) {
+                                          Navigator.pop(context, true);
+                                        }
+                                      },
+                                icon: Icon(Icons.login, size: 18),
+                                label: Text('打开官方页面登录'))),
+                        SizedBox(height: 20),
+                      ],
+                      Text('或导入已有凭证（Cookie）',
                           style: TextStyle(
                               fontSize: 13, fontWeight: FontWeight.w600)),
                       SizedBox(height: 9),
@@ -174,6 +198,20 @@ class _ConnectDialogState extends State<ConnectDialog> {
                               fontSize: 11,
                               color: context.palette.secondary,
                               height: 1.8)),
+                      SizedBox(height: 12),
+                      Text('连接会读取账号、角色及游戏状态；点击签到时向米游社提交请求。可在账号页移除凭证和角色数据。',
+                          style: TextStyle(
+                              fontSize: 11, color: context.palette.secondary)),
+                      CheckboxListTile(
+                          value: consent,
+                          contentPadding: EdgeInsets.zero,
+                          controlAffinity: ListTileControlAffinity.leading,
+                          title: Text('我同意为上述目的处理并在本机保存登录凭证',
+                              style: TextStyle(fontSize: 11)),
+                          onChanged: saving
+                              ? null
+                              : (value) =>
+                                  setState(() => consent = value ?? false)),
                     ] else
                       Container(
                           width: double.infinity,
@@ -216,7 +254,7 @@ class _ConnectDialogState extends State<ConnectDialog> {
                 onPressed: saving ? null : () => Navigator.pop(context),
                 child: Text('稍后再说')),
             FilledButton(
-                onPressed: saving
+                onPressed: saving || (canConnect && !consent)
                     ? null
                     : canConnect
                         ? () async {

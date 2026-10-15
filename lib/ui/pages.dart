@@ -247,6 +247,18 @@ class SettingsPage extends StatelessWidget {
               '首版展示回满倒计时，系统通知尚未接入'),
           Divider(height: 28),
           _row(context, Icons.public_rounded, '支持范围', '米游社国服 · 原神、星穹铁道、绝区零'),
+          Divider(height: 28),
+          ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.text_fields_rounded,
+                  color: context.palette.accent),
+              title:
+                  Text('鸿蒙黑体 HarmonyOS Sans', style: TextStyle(fontSize: 13)),
+              subtitle: Text('内置原始字体 · 查看字体和开源许可',
+                  style: TextStyle(
+                      fontSize: 11, color: context.palette.secondary)),
+              onTap: () =>
+                  showLicensePage(context: context, applicationName: '栖游')),
         ])),
         SizedBox(height: 22),
         Surface(

@@ -54,7 +54,7 @@ ThemeData appTheme({bool dark = false}) {
     useMaterial3: true,
     colorScheme: scheme,
     scaffoldBackgroundColor: p.background,
-    fontFamily: 'QiyouSans',
+    fontFamily: 'HarmonyOS Sans SC',
     fontFamilyFallback: const ['Microsoft YaHei', 'PingFang SC', 'sans-serif'],
     textTheme: TextTheme(
         bodyMedium: TextStyle(fontSize: 14, color: p.text, height: 1.6),

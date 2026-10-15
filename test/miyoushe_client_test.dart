@@ -98,12 +98,29 @@ void main() {
   });
   test('Empty challenge with risk code zero is a valid successful sign',
       () async {
-    final client = MiyousheClient(
-        transport: MockClient((request) async => request.method == 'GET'
-            ? response({'is_sign': false})
-            : response({'risk_code': 0, 'gt': '', 'challenge': ''})));
+    var signed = false;
+    final client = MiyousheClient(transport: MockClient((request) async {
+      if (request.method == 'GET') return response({'is_sign': signed});
+      signed = true;
+      return response({'risk_code': 0, 'gt': '', 'challenge': ''});
+    }));
     addTearDown(client.close);
     expect(await client.sign(account, role), SignStatus.signed);
+  });
+  test('Successful POST without confirmed official sign status is not success',
+      () async {
+    var writes = 0;
+    final client = MiyousheClient(transport: MockClient((request) async {
+      if (request.method == 'GET') return response({'is_sign': false});
+      writes++;
+      return response({'risk_code': 0});
+    }));
+    addTearDown(client.close);
+    await expectLater(
+        client.sign(account, role),
+        throwsA(isA<MiyousheException>()
+            .having((error) => error.message, 'message', contains('尚未确认'))));
+    expect(writes, 1);
   });
   test('Expired login is surfaced without response body leakage', () async {
     final client = MiyousheClient(
