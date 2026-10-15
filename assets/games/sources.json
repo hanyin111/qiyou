@@ -1,0 +1,26 @@
+[
+  {
+    "game": "绝区零",
+    "file": "assets/games/zenless.png",
+    "catalog": "https://bbs-api.miyoushe.com/apihub/api/getGameList",
+    "url": "https://upload-bbs.mihoyo.com/game/zzz/app_icon.png",
+    "sha256": "d6dd9a289c225068fa7013826668f4631cd1d6e5a84c144c8df48c3094097016",
+    "rights": "miHoYo and the respective rights holders; excluded from the source-code MIT license"
+  },
+  {
+    "game": "崩坏：星穹铁道",
+    "file": "assets/games/starRail.png",
+    "catalog": "https://bbs-api.miyoushe.com/apihub/api/getGameList",
+    "url": "https://fastcdn.mihoyo.com/static-resource-v2/2025/09/10/0351427c49938a725f7833cd6c055934_927338370489644741.png",
+    "sha256": "0d250d9665225ba42cec6906ae90513f364bb62d598bd688b9d72810f8cef8f3",
+    "rights": "miHoYo and the respective rights holders; excluded from the source-code MIT license"
+  },
+  {
+    "game": "原神",
+    "file": "assets/games/genshin.png",
+    "catalog": "https://bbs-api.miyoushe.com/apihub/api/getGameList",
+    "url": "https://bbs-static.miyoushe.com/upload/op_manual_upload/misc/genshin_6th_anniversary/1789872389328genshin_6th_anniv_icon.png",
+    "sha256": "9ebc7d6718cbcd8ad717feb2bd10660b190e5436927dbb1147b20e4b29602e9b",
+    "rights": "miHoYo and the respective rights holders; excluded from the source-code MIT license"
+  }
+]
