@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:qiyou/app_state.dart';
 import 'package:qiyou/data/device_bridge.dart';
 import 'package:qiyou/data/miyoushe_client.dart';
+import 'package:qiyou/data/record_verification.dart';
 import 'package:qiyou/domain/models.dart';
 import 'package:qiyou/main.dart';
 
@@ -23,7 +24,49 @@ class SuccessfulSignClient extends MiyousheClient {
       SignStatus.signed;
 }
 
+class RestrictedNoteClient extends MiyousheClient {
+  @override
+  Future<void> verifyNote(Account account, Role role,
+      RecordVerification verification, RecordVerificationProof proof) async {}
+  @override
+  Future<DailyNote> daily(Account account, Role role) async =>
+      throw const MiyousheException(
+          ApiFailure.verification, 'verification required');
+}
+
 void main() {
+  test('Accepted CAPTCHA without successful data remains a visible note error',
+      () async {
+    final state =
+        AppState(client: RestrictedNoteClient(), bridge: DemoBridge());
+    addTearDown(state.dispose);
+    final entry = state.entries.first;
+    final previousNote = entry.note;
+    state.demo = false;
+    state.accounts.add(Account(
+        id: entry.accountId,
+        cookie: 'test',
+        deviceId: 'test',
+        roles: [entry.role]));
+    entry.signStatus = SignStatus.alreadySigned;
+    await expectLater(
+        state.refreshNote(entry,
+            verification: RecordVerification(
+                gt: 'test',
+                challenge: 'test',
+                accountId: entry.accountId,
+                deviceId: 'test',
+                roleKey: entry.role.key,
+                issuedAt: DateTime.now()),
+            proof:
+                const RecordVerificationProof('test', 'test', 'test|jordan')),
+        throwsA(isA<MiyousheException>()));
+    expect(entry.noteError, contains('已确认验证码'));
+    expect(entry.noteNeedsVerification, isTrue);
+    expect(entry.note, same(previousNote));
+    expect(entry.signStatus, SignStatus.alreadySigned);
+    expect(state.busy, isFalse);
+  });
   test('Signing preserves an unrelated daily-note verification error',
       () async {
     final state =

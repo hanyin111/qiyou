@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:qiyou/data/miyoushe_client.dart';
+import 'package:qiyou/data/record_verification.dart';
 import 'package:qiyou/domain/models.dart';
 
 const role = Role(
@@ -20,6 +21,94 @@ http.Response response(Map<String, dynamic> data, {int retcode = 0}) =>
     http.Response(jsonEncode({'retcode': retcode, 'data': data}), 200);
 
 void main() {
+  test('Manual verification signs the exact body and scopes its read retry',
+      () async {
+    var at = DateTime.utc(2026, 10, 16);
+    var stage = 0;
+    final client = MiyousheClient(
+        clock: () => at,
+        transport: MockClient((request) async {
+          expect(request.headers['x-rpc-challenge_game'], '2');
+          expect(request.headers['x-rpc-device_id'], 'device');
+          final parts = request.headers['DS']!.split(',');
+          expect(
+              request.headers['DS'],
+              MiyousheProtocol.signature(
+                  timestamp: at.millisecondsSinceEpoch ~/ 1000,
+                  nonce: parts[1],
+                  query: request.url.query,
+                  body: request.body));
+          if (stage++ == 0) {
+            expect(request.url.query, 'is_high=false');
+            expect(request.url.path, endsWith('/createVerification'));
+            return response(
+                {'gt': 'test-gt', 'challenge': 'initial-challenge'});
+          }
+          if (request.method == 'POST') {
+            expect(request.url.path, endsWith('/verifyVerification'));
+            expect(jsonDecode(request.body), {
+              'geetest_challenge': 'solved-challenge',
+              'geetest_validate': 'human-proof',
+              'geetest_seccode': 'human-proof|jordan'
+            });
+            return response({});
+          }
+          expect(
+              request.headers['x-rpc-challenge'],
+              request.url.queryParameters['role_id'] == role.uid && stage == 3
+                  ? 'solved-challenge'
+                  : isNull);
+          return response({'current_resin': 100, 'max_resin': 200});
+        }));
+    addTearDown(client.close);
+    final challenge = await client.createNoteVerification(account, role);
+    await client.verifyNote(
+        account,
+        role,
+        challenge,
+        const RecordVerificationProof(
+            'solved-challenge', 'human-proof', 'human-proof|jordan'));
+    expect((await client.daily(account, role)).energy, 100);
+    const other = Role(
+        game: Game.genshin,
+        uid: '2',
+        region: 'cn_gf01',
+        nickname: 'Other',
+        serverName: 'Test');
+    await client.daily(account, other);
+    at = at.add(const Duration(minutes: 5));
+    await client.daily(account, role);
+  });
+  test('Unconfirmed or stale CAPTCHA must not authorize a retry', () async {
+    final at = DateTime.utc(2026, 10, 16);
+    var requests = 0;
+    final client = MiyousheClient(
+        clock: () => at,
+        transport: MockClient((request) async {
+          requests++;
+          if (request.method == 'POST') return response({}, retcode: 1034);
+          expect(request.headers['x-rpc-challenge'], isNull);
+          return response({'current_resin': 100, 'max_resin': 200});
+        }));
+    addTearDown(client.close);
+    RecordVerification ticket(DateTime issued) => RecordVerification(
+        gt: 'test',
+        challenge: 'test',
+        accountId: account.id,
+        deviceId: account.deviceId,
+        roleKey: role.key,
+        issuedAt: issued);
+    const proof = RecordVerificationProof('challenge', 'proof', 'proof|jordan');
+    await expectLater(
+        client.verifyNote(account, role,
+            ticket(at.subtract(const Duration(minutes: 5))), proof),
+        throwsA(isA<MiyousheException>()));
+    expect(requests, 0);
+    await expectLater(client.verifyNote(account, role, ticket(at), proof),
+        throwsA(isA<MiyousheException>()));
+    await client.daily(account, role);
+    expect(requests, 2);
+  });
   test(
       'Cookie import accepts token values containing equals and masks debug output',
       () {

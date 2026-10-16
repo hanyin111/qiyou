@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'data/device_bridge.dart';
 import 'data/miyoushe_client.dart';
+import 'data/record_verification.dart';
 import 'domain/models.dart';
 
 class AppState extends ChangeNotifier {
@@ -321,35 +322,59 @@ class AppState extends ChangeNotifier {
     return demo ? '演示签到完成 · 未发送真实请求' : '已完成 $done / ${pending.length} 个角色的签到';
   }
 
-  Future<void> acceptOfficialNote(GameEntry entry, Map<String, dynamic> data,
-      Map<String, String> headers) async {
-    if (demo || busy || !entries.contains(entry)) return;
-    final note = DailyNote.parse(entry.role.game, data, DateTime.now());
-    if (note.energy == null || note.capacity == null || note.capacity! <= 0) {
-      throw const MiyousheException(ApiFailure.protocol, '官方便笺返回的数据不完整。');
+  Account _noteAccount(GameEntry entry) {
+    if (demo || busy || !entries.contains(entry)) {
+      throw const MiyousheException(ApiFailure.protocol, '当前无法查询，请返回游戏页重试。');
     }
-    final index =
-        accounts.indexWhere((account) => account.id == entry.accountId);
-    if (index < 0) return;
-    final previous = accounts[index];
-    final updated = [...accounts];
-    updated[index] = Account(
-        id: previous.id,
-        cookie: previous.cookie,
-        deviceId: previous.deviceId,
-        roles: previous.roles,
-        recordHeaders: {
-          ...previous.recordHeaders,
-          ...MiyousheClient.safeRecordHeaders(headers)
-        });
-    await _persist(accountOverride: updated);
-    accounts = updated;
-    entry.note = note;
-    entry.noteError = null;
-    entry.noteNeedsVerification = false;
-    lastRefresh = DateTime.now();
-    _record('${entry.role.game.shortTitle} · 已从官方工具同步便笺');
+    return accounts.firstWhere((account) => account.id == entry.accountId);
+  }
+
+  Future<RecordVerification> createNoteVerification(GameEntry entry) async {
+    final account = _noteAccount(entry);
+    busy = true;
     notifyListeners();
+    try {
+      return await client.createNoteVerification(account, entry.role);
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> refreshNote(GameEntry entry,
+      {RecordVerification? verification,
+      RecordVerificationProof? proof}) async {
+    final account = _noteAccount(entry);
+    busy = true;
+    notifyListeners();
+    var verified = false;
+    try {
+      if (verification != null && proof != null) {
+        await client.verifyNote(account, entry.role, verification, proof);
+        verified = true;
+      }
+      final note = await client.daily(account, entry.role);
+      if (note.energy == null || note.capacity == null || note.capacity! <= 0) {
+        throw const MiyousheException(
+            ApiFailure.protocol, '米游社未返回完整体力数据，暂时无法同步。');
+      }
+      entry.note = note;
+      entry.noteError = null;
+      entry.noteNeedsVerification = false;
+      lastRefresh = DateTime.now();
+      _record('${entry.role.game.shortTitle} · 便笺已同步');
+    } on MiyousheException catch (error) {
+      final failure = verified && error.kind == ApiFailure.verification
+          ? const MiyousheException(ApiFailure.verification,
+              '米游社已确认验证码，但仍限制便笺查询。请稍后重试；若持续出现，可能还需要在米游社 App 处理账号验证。')
+          : error;
+      entry.noteError = failure.message;
+      entry.noteNeedsVerification = failure.kind == ApiFailure.verification;
+      throw failure;
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
   }
 
   SignStatus _status(MiyousheException error) => switch (error.kind) {

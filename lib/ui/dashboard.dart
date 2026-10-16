@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import '../app_state.dart';
+import '../data/miyoushe_client.dart';
 import '../domain/models.dart';
 import 'design.dart';
 import 'dialogs.dart';
 import 'official_login.dart';
-import 'official_record.dart';
+import 'note_verification.dart';
 
 class Overview extends StatelessWidget {
   const Overview(
@@ -238,9 +239,19 @@ class GameCard extends StatelessWidget {
               TextButton(
                   onPressed: state.busy
                       ? null
-                      : () => openOfficialRecord(context, state, entry),
-                  child: Text(
-                      entry.noteNeedsVerification ? '打开官方工具验证' : '在官方工具中检查便笺')),
+                      : () async {
+                          if (entry.noteNeedsVerification) {
+                            await openNoteVerification(context, state, entry);
+                          } else {
+                            try {
+                              await state.refreshNote(entry);
+                            } on MiyousheException {
+                              // The card displays the updated failure.
+                            }
+                          }
+                        },
+                  child:
+                      Text(entry.noteNeedsVerification ? '完成安全验证' : '重试体力查询')),
           ],
         ]));
   }

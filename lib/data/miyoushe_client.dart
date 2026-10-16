@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import '../domain/models.dart';
+import 'record_verification.dart';
 
 enum ApiFailure { credentials, expired, verification, network, protocol }
 
@@ -39,6 +40,7 @@ class MiyousheClient {
   final http.Client _http;
   final DateTime Function() _clock;
   final Random _random = Random.secure();
+  final _recordPasses = <String, ({String challenge, DateTime expires})>{};
   static const hosts = {
     'api-takumi.mihoyo.com',
     'api-takumi-record.mihoyo.com',
@@ -133,10 +135,89 @@ class MiyousheClient {
       Game.starRail => '/game_record/app/hkrpg/api/note',
       Game.zenless => '/event/game_record_zzz/api/zzz/note',
     };
-    final data = await _request(account, 'api-takumi-record.mihoyo.com', path,
-        params: {'role_id': role.uid, 'server': role.region}, record: true);
-    return DailyNote.parse(role.game, data, _clock());
+    final key = _passKey(account, role);
+    final pass = _recordPasses[key];
+    if (pass != null && !_clock().isBefore(pass.expires)) {
+      _recordPasses.remove(key);
+    }
+    try {
+      final data = await _request(account, 'api-takumi-record.mihoyo.com', path,
+          params: {'role_id': role.uid, 'server': role.region},
+          record: true,
+          recordGame: role.game,
+          verifiedChallenge: _recordPasses[key]?.challenge);
+      return DailyNote.parse(role.game, data, _clock());
+    } on MiyousheException catch (error) {
+      if (error.kind == ApiFailure.verification ||
+          error.kind == ApiFailure.expired) {
+        _recordPasses.remove(key);
+      }
+      rethrow;
+    }
   }
+
+  String _passKey(Account account, Role role) =>
+      '${account.id}:${account.deviceId}:${role.key}';
+
+  Future<RecordVerification> createNoteVerification(
+      Account account, Role role) async {
+    _recordPasses.remove(_passKey(account, role));
+    final data = await _request(account, 'api-takumi-record.mihoyo.com',
+        '/game_record/app/card/wapi/createVerification',
+        params: {'is_high': 'false'},
+        record: true,
+        recordGame: role.game,
+        expectChallenge: true);
+    if (!RecordVerification.validToken(data['gt']) ||
+        !RecordVerification.validToken(data['challenge'])) {
+      throw const MiyousheException(
+          ApiFailure.protocol, '米游社没有返回可用的验证码，请稍后重试。');
+    }
+    return RecordVerification(
+        gt: data['gt'] as String,
+        challenge: data['challenge'] as String,
+        newCaptcha: data['new_captcha'] != false,
+        accountId: account.id,
+        deviceId: account.deviceId,
+        roleKey: role.key,
+        issuedAt: _clock());
+  }
+
+  Future<void> verifyNote(Account account, Role role,
+      RecordVerification verification, RecordVerificationProof proof) async {
+    if (!verification.matches(account, role, _clock()) ||
+        RecordVerificationProof.fromData(proof.toJson()) == null) {
+      throw const MiyousheException(
+          ApiFailure.verification, '本次验证已失效，请重新获取验证码。');
+    }
+    await _request(account, 'api-takumi-record.mihoyo.com',
+        '/game_record/app/card/wapi/verifyVerification',
+        body: proof.toJson(), record: true, recordGame: role.game);
+    // Only an official successful response permits a retry with this challenge.
+    // Keep it in memory, scoped to this account, device and role; never persist it.
+    _recordPasses[_passKey(account, role)] = (
+      challenge: proof.challenge,
+      expires: verification.issuedAt.add(const Duration(minutes: 5))
+    );
+  }
+
+  static Map<String, String> recordMetadata(Game game) => switch (game) {
+        Game.genshin => {
+            'x-rpc-challenge_game': '2',
+            'x-rpc-page': 'v4.1.5-ys_#ys',
+            'x-rpc-tool-verison': 'v4.1.5-ys'
+          },
+        Game.starRail => {
+            'x-rpc-challenge_game': '6',
+            'x-rpc-page': 'v1.4.1-rpg_#/rpg',
+            'x-rpc-tool-verison': 'v1.4.1-rpg'
+          },
+        Game.zenless => {
+            'x-rpc-challenge_game': '8',
+            'x-rpc-page': 'v1.0.14_#/zzz',
+            'x-rpc-tool-verison': 'v1.0.14-zzz'
+          }
+      };
 
   Future<SignStatus> signInfo(Account account, Role role) async {
     final data =
@@ -187,12 +268,16 @@ class MiyousheClient {
       {Map<String, String> params = const {},
       Map<String, dynamic>? body,
       bool record = false,
+      Game? recordGame,
+      String? verifiedChallenge,
+      bool expectChallenge = false,
       Game? game}) async {
     if (!hosts.contains(host)) throw StateError('Unsupported API host');
     final keys = params.keys.toList()..sort();
     final uri =
         Uri.https(host, path, {for (final key in keys) key: params[key]!});
     final timestamp = _clock().millisecondsSinceEpoch ~/ 1000;
+    final encodedBody = body == null ? '' : jsonEncode(body);
     final nonce = record
         ? '${100000 + _random.nextInt(100001)}'
         : List.generate(
@@ -220,14 +305,21 @@ class MiyousheClient {
         'DS': MiyousheProtocol.signature(
             timestamp: timestamp,
             nonce: nonce,
-            query: record ? uri.query : null)
+            query: record ? uri.query : null,
+            body: encodedBody)
       });
     if (record) {
       request.headers.addAll(safeRecordHeaders(account.recordHeaders));
+      if (recordGame != null) {
+        request.headers.addAll(recordMetadata(recordGame));
+      }
+      if (verifiedChallenge != null) {
+        request.headers['x-rpc-challenge'] = verifiedChallenge;
+      }
     }
     if (body != null) {
       request.headers['Content-Type'] = 'application/json';
-      request.body = jsonEncode(body);
+      request.body = encodedBody;
     }
     try {
       final response = await (() async {
@@ -248,17 +340,23 @@ class MiyousheClient {
       final json = object(response);
       final code = number(json['retcode']);
       final data = object(json['data']);
-      if (code == -5003 && body != null) throw _AlreadySigned();
+      if (code == -5003 &&
+          body != null &&
+          game != null &&
+          path.endsWith('/sign')) {
+        throw _AlreadySigned();
+      }
       if ({-100, 10001, 10002, 10101}.contains(code)) {
         throw const MiyousheException(ApiFailure.expired, '登录已过期，请重新连接米游社账号。');
       }
       final risk = number(data['risk_code']);
       if ({1034, 5003, 10035, 10041, -999}.contains(code) ||
           (risk != null && risk != 0) ||
-          (data['gt']?.toString().isNotEmpty ?? false) ||
-          (data['challenge']?.toString().isNotEmpty ?? false)) {
+          (!expectChallenge &&
+              ((data['gt']?.toString().isNotEmpty ?? false) ||
+                  (data['challenge']?.toString().isNotEmpty ?? false)))) {
         throw MiyousheException(
-            ApiFailure.verification, '米游社要求安全验证（$code）。请打开官方工具完成验证后重试。');
+            ApiFailure.verification, '米游社要求安全验证（$code）。请点击“完成安全验证”后重试。');
       }
       if (code != 0) {
         throw MiyousheException(ApiFailure.protocol,

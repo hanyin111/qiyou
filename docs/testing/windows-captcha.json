@@ -1,0 +1,17 @@
+{
+  "version": "0.1.3",
+  "passed": true,
+  "status": "widget_ready_and_bridge_received",
+  "challenge_source": "GeeTest official public demo",
+  "console_errors": 0,
+  "uses_user_account": false,
+  "captcha_solved": false,
+  "miyoushe_anonymous_create_verification": {
+    "retcode": 0,
+    "has_gt": true,
+    "has_challenge": true,
+    "has_new_captcha": true,
+    "uses_account": false
+  },
+  "scope": "Windows native WebView2 SDK loading and JavaScript callback only; real MiYouShe verification and daily-note retrieval still require the account owner."
+}
