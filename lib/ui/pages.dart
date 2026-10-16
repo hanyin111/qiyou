@@ -57,9 +57,9 @@ class AccountPage extends StatelessWidget {
   Widget build(BuildContext context) =>
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         SectionTitle('账号',
-            subtitle: '米游社 · 国服',
+            subtitle: '米游社 · 库街区 · 塔吉多',
             trailing: IconButton(
-                tooltip: '连接米游社',
+                tooltip: '连接游戏社区',
                 onPressed: state.busy ? null : connect,
                 icon: Icon(Icons.person_add_alt_1_outlined,
                     color: context.palette.accent))),
@@ -83,18 +83,18 @@ class AccountPage extends StatelessWidget {
                       child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                        Text('连接米游社',
+                        Text('连接游戏社区',
                             style: TextStyle(
                                 fontSize: 19, fontWeight: FontWeight.w700)),
                         SizedBox(height: 5),
-                        Text('支持原神、星穹铁道、绝区零国服',
+                        Text('支持米游社、库街区和塔吉多国服角色',
                             style: TextStyle(
                                 fontSize: 12,
                                 color: context.palette.secondary)),
                       ]))
                 ]),
                 SizedBox(height: 22),
-                Text('首版通过登录凭证导入账号。验证成功后，游戏角色会自动出现在总览中。',
+                Text('在官方页面登录后，已绑定的游戏角色会出现在游戏页。',
                     style: TextStyle(
                         fontSize: 13, color: context.palette.secondary)),
                 SizedBox(height: 23),
@@ -123,7 +123,8 @@ class AccountPage extends StatelessWidget {
                             Text(account.title,
                                 style: TextStyle(
                                     fontSize: 17, fontWeight: FontWeight.w700)),
-                            Text('米游社 · ${account.roles.length} 个角色',
+                            Text(
+                                '${account.community.title} · ${account.roles.length} 个角色',
                                 style: TextStyle(
                                     fontSize: 11,
                                     color: context.palette.secondary)),
@@ -144,7 +145,7 @@ class AccountPage extends StatelessWidget {
                     ]),
                   ]))),
         SizedBox(height: 22),
-        InfoBanner('账号凭证只在设备本地加密保存，用于向米游社请求游戏状态和签到。首版尚未加入扫码登录。'),
+        InfoBanner('账号凭证只在设备本地加密保存，用于向对应官方社区请求游戏状态和签到。'),
         SizedBox(height: 22),
         Surface(
             color: context.palette.selected,
@@ -246,7 +247,7 @@ class SettingsPage extends StatelessWidget {
           _row(context, Icons.notifications_none_rounded, '体力提醒',
               '首版展示回满倒计时，系统通知尚未接入'),
           Divider(height: 28),
-          _row(context, Icons.public_rounded, '支持范围', '米游社国服 · 原神、星穹铁道、绝区零'),
+          _row(context, Icons.public_rounded, '支持范围', '米游社、库街区、塔吉多 · 国服'),
           Divider(height: 28),
           ListTile(
               contentPadding: EdgeInsets.zero,
@@ -266,13 +267,13 @@ class SettingsPage extends StatelessWidget {
           Brand(compact: true),
           Spacer(),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('0.1.5',
+            Text('0.1.6',
                 style: TextStyle(
                     fontSize: 10,
                     letterSpacing: 1,
                     color: context.palette.secondary)),
             SizedBox(height: 5),
-            Text('米游社首版',
+            Text('多社区预览版',
                 style:
                     TextStyle(fontSize: 11, color: context.palette.secondary)),
           ])

@@ -2,17 +2,32 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'data/device_bridge.dart';
 import 'data/miyoushe_client.dart';
+import 'data/community_client.dart';
+import 'data/kuro_client.dart';
+import 'data/taygedo_client.dart';
 import 'data/record_verification.dart';
 import 'data/record_browser_session.dart';
 import 'domain/models.dart';
 
 class AppState extends ChangeNotifier {
-  AppState({MiyousheClient? client, DeviceBridge? bridge})
+  AppState(
+      {MiyousheClient? client,
+      CommunityClient? kuro,
+      CommunityClient? taygedo,
+      DeviceBridge? bridge})
       : client = client ?? MiyousheClient(),
+        kuro = kuro ?? KuroClient(),
+        taygedo = taygedo ?? TaygedoClient(),
         bridge = bridge ?? DeviceBridge() {
     _makeDemo();
   }
   final MiyousheClient client;
+  final CommunityClient kuro, taygedo;
+  CommunityClient _clientFor(Community community) => switch (community) {
+        Community.miyoushe => client,
+        Community.kuro => kuro,
+        Community.taygedo => taygedo,
+      };
   final DeviceBridge bridge;
   bool demo = true,
       busy = false,
@@ -191,7 +206,8 @@ class AppState extends ChangeNotifier {
     await refresh();
   }
 
-  Future<void> connect(String cookie) async {
+  Future<void> connect(String cookie,
+      {Community community = Community.miyoushe}) async {
     if (busy) return;
     if (!bridge.supportsAccounts || !storageReady) {
       throw StateError('真实账号需要在支持安全存储的手机端连接。');
@@ -199,15 +215,35 @@ class AppState extends ChangeNotifier {
     busy = true;
     notifyListeners();
     try {
-      final values = MiyousheClient.parseCookie(cookie);
+      final values = community == Community.miyoushe
+          ? MiyousheClient.parseCookie(cookie)
+          : <String, String>{};
       final id = values['account_id_v2'] ??
           values['account_id'] ??
           values['ltuid_v2'] ??
           values['ltuid'];
-      final existing =
-          accounts.where((account) => account.id == id).firstOrNull;
-      final account =
-          await client.connect(cookie, existingDeviceId: existing?.deviceId);
+      final existing = accounts
+          .where(
+              (account) => account.community == community && account.id == id)
+          .firstOrNull;
+      var account = await _clientFor(community)
+          .connect(cookie, existingDeviceId: existing?.deviceId);
+      if (account.community != community ||
+          account.roles.any((r) => r.game.community != community)) {
+        throw const MiyousheException(ApiFailure.protocol, '社区账号信息不一致，请重新连接。');
+      }
+      final previous = accounts
+          .where((a) => a.id == account.id && a.community == community)
+          .firstOrNull;
+      if (community != Community.miyoushe && previous != null) {
+        account = Account(
+            id: account.id,
+            cookie: account.cookie,
+            deviceId: previous.deviceId,
+            roles: account.roles,
+            community: community,
+            recordHeaders: account.recordHeaders);
+      }
       final updated = [
         ...accounts.where((item) => item.id != account.id),
         account
@@ -216,7 +252,7 @@ class AppState extends ChangeNotifier {
       accounts = updated;
       _makeLive();
       activities.clear();
-      _record('已连接米游社 · 发现 ${account.roles.length} 个游戏角色');
+      _record('已连接${community.title} · 发现 ${account.roles.length} 个游戏角色');
     } finally {
       busy = false;
       notifyListeners();
@@ -259,13 +295,15 @@ class AppState extends ChangeNotifier {
           entry.signError = null;
           entry.noteNeedsVerification = false;
           try {
-            entry.note = await client.daily(account, entry.role);
+            entry.note =
+                await _clientFor(account.community).daily(account, entry.role);
           } on MiyousheException catch (error) {
             entry.noteError = error.message;
             entry.noteNeedsVerification = error.kind == ApiFailure.verification;
           }
           try {
-            entry.signStatus = await client.signInfo(account, entry.role);
+            entry.signStatus = await _clientFor(account.community)
+                .signInfo(account, entry.role);
           } on MiyousheException catch (error) {
             entry.signStatus = _status(error);
             entry.signError = error.message;
@@ -304,7 +342,8 @@ class AppState extends ChangeNotifier {
           try {
             final account =
                 accounts.firstWhere((account) => account.id == entry.accountId);
-            entry.signStatus = await client.sign(account, entry.role);
+            entry.signStatus =
+                await _clientFor(account.community).sign(account, entry.role);
             entry.signError = null;
           } on MiyousheException catch (error) {
             entry.signStatus = _status(error);
@@ -332,6 +371,7 @@ class AppState extends ChangeNotifier {
 
   Future<RecordVerification> createNoteVerification(GameEntry entry) async {
     final account = _noteAccount(entry);
+    if (account.community != Community.miyoushe) throw StateError('此验证仅适用于米游社');
     busy = true;
     notifyListeners();
     try {
@@ -345,6 +385,9 @@ class AppState extends ChangeNotifier {
   Future<void> installRecordBrowserSession(
       GameEntry entry, RecordBrowserSession session) async {
     final previous = _noteAccount(entry);
+    if (previous.community != Community.miyoushe) {
+      throw StateError('此设备会话仅适用于米游社');
+    }
     final cookies = MiyousheClient.parseCookie(previous.cookie)
       ..addAll(session.cookies);
     final updated = [...accounts];
@@ -375,6 +418,10 @@ class AppState extends ChangeNotifier {
       {RecordVerification? verification,
       RecordVerificationProof? proof}) async {
     final account = _noteAccount(entry);
+    if ((verification != null || proof != null) &&
+        account.community != Community.miyoushe) {
+      throw StateError('此验证仅适用于米游社');
+    }
     busy = true;
     notifyListeners();
     var verified = false;
@@ -383,10 +430,11 @@ class AppState extends ChangeNotifier {
         await client.verifyNote(account, entry.role, verification, proof);
         verified = true;
       }
-      final note = await client.daily(account, entry.role);
+      final note =
+          await _clientFor(account.community).daily(account, entry.role);
       if (note.energy == null || note.capacity == null || note.capacity! <= 0) {
         throw const MiyousheException(
-            ApiFailure.protocol, '米游社未返回完整体力数据，暂时无法同步。');
+            ApiFailure.protocol, '社区未返回完整体力数据，暂时无法同步。');
       }
       entry.note = note;
       entry.noteError = null;
@@ -495,6 +543,8 @@ class AppState extends ChangeNotifier {
   @override
   void dispose() {
     client.close();
+    kuro.close();
+    taygedo.close();
     super.dispose();
   }
 }

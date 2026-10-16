@@ -2,12 +2,19 @@
 
 轻量的二游体力、日常与社区签到管理。Flutter 开发，提供黑白灰亮色、暗色两种主题。
 
-首版支持米游社国服：**原神、崩坏：星穹铁道、绝区零**。
+支持米游社、库街区、塔吉多国服账号。0.1.6 新增库街区和塔吉多的实验接入，真实账号登录和签到待用户实测。
+
+| 社区 | 游戏 | 当前适配 |
+| --- | --- | --- |
+| 米游社 | 原神、星穹铁道、绝区零 | 登录、角色、签到、体力与日常、人工安全验证 |
+| 库街区 | 鸣潮、战双帕弥什 | 官方网页登录、绑定角色、签到、体力与活跃度 |
+| 塔吉多 | 异环 | 官方网页登录、绑定角色、签到、本性像素、都市活力、今日活跃 |
+| 塔吉多 | 幻塔 | 官方网页登录、绑定角色、签到；体力与日常尚未适配 |
 
 ## 当前功能
 
 - 游戏总览：体力、上限、预计回满时间和社区可提供的日常进度。
-- 多米游社账号导入，自动发现已绑定的游戏角色。
+- 多社区、多账号导入，自动发现官方社区已绑定的游戏角色。
 - 一键社区签到，分别显示已签、过期、需要验证、失败等状态。
 - 每日手动清单，按北京时间重置；与游戏接口中的完成度独立。
 - 亮色 / 暗色切换，UID 展示脱敏。
@@ -16,7 +23,7 @@
 - Windows 桌面测试版，支持官方网页连接账号和 DPAPI 本机加密存储。
 
 **浏览器预览默认使用示例数据，不接受真实 Cookie，也不会发送真实签到请求。**
-Windows 端已由用户验证官方网页登录、角色读取及今日签到状态；实时便笺仍在进行人工安全验证与端到端测试。Android / iOS / 鸿蒙尚未完成真机验证。接口不是官方对第三方保证稳定的开放 API，版本、签名参数和接口字段可能变化。官方网页登录后获取会话不等于官方 OAuth 授权。
+Windows 米游社登录、签到及 0.1.5 人工验证码完成后读取体力，已由用户实测确认。库街区和塔吉多尚未完成真实账号验证。Android / iOS / 鸿蒙尚未完成真机验证。接口不是官方对第三方保证稳定的开放 API，版本、签名参数和接口字段可能变化。官方网页登录后获取会话不等于官方 OAuth 授权。
 
 首版暂不包含扫码登录、后台自动签到和系统体力通知。体力显示最近同步值；回满倒计时依赖该次同步估算。
 
@@ -28,7 +35,7 @@ flutter run -d chrome
 ```
 
 Windows 测试：`flutter run -d windows`；发布构建：`flutter build windows --release`。
-将 `build/windows/x64/runner/Release/` 整个目录一起分发，不能只复制 EXE。
+分发时包含 EXE、运行库 DLL 和 `data/`，不能只复制 EXE。不要打包使用后生成的 `qiyou.exe.WebView2/` 浏览器配置目录或本机账号数据。
 登录组件使用系统 WebView2 Runtime；本机构建还需 Microsoft NuGet 位于 PATH。
 
 Windows 原生会话回归测试入口为 `test/native_session_probe.dart`。
@@ -84,13 +91,13 @@ flutter build hap --release --target-platform ohos-arm64
 
 ## 登录与凭证
 
-Windows / Android / iOS 在“账号”页可打开官方网页登录，完成后点击“完成登录并连接”；也可导入完整 Cookie。鸿蒙当前仅支持 Cookie 导入。连接前主动同意凭证处理，先请求已绑定角色，校验成功后才保存。WebView 使用隐私模式，不向栖游提供密码输入内容。
+Windows / Android / iOS 在“账号”页连接时选择社区，打开官方网页，登录后点击“完成登录并连接”。米游社也可导入完整 Cookie，库街区和塔吉多可在本机导入已有 Token。鸿蒙当前仅支持凭证导入。连接前主动同意凭证处理，先请求已绑定角色，校验成功后才保存。WebView 使用隐私模式，栖游不读取密码表单或短信验证码。库街区只读取官方 `auth_token` 会话键，塔吉多只读取官方 `token` 会话键；仅在对应官方社区页面读取。
 
 - Android：Android Keystore 的 AES-GCM 密钥，密文写入 `noBackupFilesDir`，关闭应用备份。
 - iOS：Keychain，`AfterFirstUnlockThisDeviceOnly`。
 - Windows：当前 Windows 用户的 DPAPI，密文位于本机用户的 LocalAppData/Qiyou。
 - 鸿蒙：Asset Store；按每条 SECRET 的字节上限分块，使用最后提交的索引切换完整数据版本。
-- 不记录 Cookie，不上传到自建服务器；账号请求只发送到代码内固定的米游社官方 HTTPS 域名，禁止自动跟随重定向。
+- 不记录登录凭证，不上传到自建服务器；账号请求只发送到各社区客户端内固定的官方 HTTPS 域名，禁止自动跟随重定向。账号按社区隔离并在同一本机安全存储中加密保存。
 - 遇到验证时停止该角色的签到，由用户回官方社区处理；不会尝试自动破解验证码。
 - 签到写请求失败后不自动重试，避免结果不明确时重复提交。
 - 签到提交成功后再次读取官方状态，未确认时不会标记成功。
@@ -105,7 +112,7 @@ Windows / Android / iOS 在“账号”页可打开官方网页登录，完成�
 
 ```text
 lib/domain/            角色、体力、日常和签到状态
-lib/data/              米游社请求与系统存储通道
+lib/data/              三个社区的官方请求、登录会话与系统存储通道
 lib/ui/                简洁界面与亮暗主题
 platform/ohos/         鸿蒙原生存储插件
 scripts/               鸿蒙工程配置、图标和字体工具
@@ -114,6 +121,8 @@ test/                  模拟接口、错误处理和响应式界面测试
 ```
 
 游戏接口地址和协议字段参考米游社客户端接口及 [GsCore](https://github.com/Genshin-bots/gsuid_core) 等项目的公开资料；本项目没有嵌入或运行其插件代码。
+
+库街区与塔吉多的接口、官方前端来源及测试边界记录于 [多社区适配记录](docs/testing/community-integration.md)。只借鉴公开协议字段，使用独立 Dart 实现；没有接入上游的代理服务、自动验证码或社区刷任务功能。
 
 人工验证的接口字段参考 [GsCore 验证请求](https://github.com/Genshin-bots/gsuid_core/blob/master/gsuid_core/utils/api/mys/pass_request.py)，完整上下文与重试流程按[米游社官方前端](https://webstatic.mihoyo.com/app/community-game-records/)核对（见 [0.1.4 核对记录](docs/testing/record-verification-protocol.md)），验证码交互使用[极验官方 Web SDK](https://docs.geetest.com/captcha/apirefer/api/web)。未集成上游的自动验证服务；只由用户操作验证码，并由米游社服务端确认。
 

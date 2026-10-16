@@ -1,0 +1,8 @@
+{
+  "version": "0.1.6",
+  "passed": true,
+  "official_page_and_session_reader": {"kuro": true, "taygedo": true},
+  "uses_user_account": false,
+  "performs_sign_in": false,
+  "scope": "Anonymous native Windows WebViews loaded the official community origins and executed the production session-key readers. Real account login, daily data and sign-in remain unverified."
+}

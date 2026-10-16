@@ -1,42 +1,87 @@
 import 'dart:math';
 
-enum Game { genshin, starRail, zenless }
+enum Community { miyoushe, kuro, taygedo }
+
+extension CommunityInfo on Community {
+  String get title => switch (this) {
+        Community.miyoushe => '米游社',
+        Community.kuro => '库街区',
+        Community.taygedo => '塔吉多',
+      };
+  String get games => Game.values
+      .where((g) => g.community == this)
+      .map((g) => g.shortTitle)
+      .join('、');
+}
+
+enum Game {
+  genshin,
+  starRail,
+  zenless,
+  wutheringWaves,
+  punishingGrayRaven,
+  nevernessToEverness,
+  towerOfFantasy
+}
 
 extension GameInfo on Game {
   String get title => switch (this) {
         Game.genshin => '原神',
         Game.starRail => '崩坏：星穹铁道',
         Game.zenless => '绝区零',
+        Game.wutheringWaves => '鸣潮',
+        Game.punishingGrayRaven => '战双帕弥什',
+        Game.nevernessToEverness => '异环',
+        Game.towerOfFantasy => '幻塔',
       };
-  String get shortTitle => switch (this) {
-        Game.genshin => '原神',
-        Game.starRail => '星穹铁道',
-        Game.zenless => '绝区零',
+  String get shortTitle => this == Game.starRail ? '星穹铁道' : title;
+  Community get community => switch (this) {
+        Game.genshin || Game.starRail || Game.zenless => Community.miyoushe,
+        Game.wutheringWaves || Game.punishingGrayRaven => Community.kuro,
+        Game.nevernessToEverness || Game.towerOfFantasy => Community.taygedo,
+      };
+  String get communityGameId => switch (this) {
+        Game.wutheringWaves => '3',
+        Game.punishingGrayRaven => '2',
+        Game.nevernessToEverness => '1289',
+        Game.towerOfFantasy => '1256',
+        _ => '',
       };
   String get english => switch (this) {
         Game.genshin => 'GENSHIN IMPACT',
         Game.starRail => 'HONKAI: STAR RAIL',
         Game.zenless => 'ZENLESS ZONE ZERO',
+        Game.wutheringWaves => 'WUTHERING WAVES',
+        Game.punishingGrayRaven => 'PUNISHING: GRAY RAVEN',
+        Game.nevernessToEverness => 'NEVERNESS TO EVERNESS',
+        Game.towerOfFantasy => 'TOWER OF FANTASY',
       };
   String get biz => switch (this) {
         Game.genshin => 'hk4e_cn',
         Game.starRail => 'hkrpg_cn',
         Game.zenless => 'nap_cn',
+        _ => '',
       };
   String get resource => switch (this) {
         Game.genshin => '原粹树脂',
         Game.starRail => '开拓力',
         Game.zenless => '电量',
+        Game.wutheringWaves => '结晶波片',
+        Game.punishingGrayRaven => '血清',
+        Game.nevernessToEverness => '本性像素',
+        Game.towerOfFantasy => '活力',
       };
   String get activityId => switch (this) {
         Game.genshin => 'e202311201442471',
         Game.starRail => 'e202304121516551',
         Game.zenless => 'e202406242138391',
+        _ => '',
       };
   String get signGame => switch (this) {
         Game.genshin => 'hk4e',
         Game.starRail => 'hkrpg',
         Game.zenless => 'zzz',
+        _ => '',
       };
 }
 
@@ -87,15 +132,19 @@ class Account {
       required this.cookie,
       required this.deviceId,
       required this.roles,
+      this.community = Community.miyoushe,
       this.recordHeaders = const {}});
   final String id, cookie, deviceId;
   final List<Role> roles;
   final Map<String, String> recordHeaders;
-  String get title => roles.isEmpty ? '米游社账号' : roles.first.nickname;
+  final Community community;
+  String get title =>
+      roles.isEmpty ? '${community.title}账号' : roles.first.nickname;
   Map<String, dynamic> toJson() => {
         'id': id,
         'cookie': cookie,
         'deviceId': deviceId,
+        'community': community.name,
         'recordHeaders': recordHeaders,
         'roles': roles.map((role) => role.toJson()).toList()
       };
@@ -103,6 +152,8 @@ class Account {
       id: json['id'] as String,
       cookie: json['cookie'] as String,
       deviceId: json['deviceId'] as String,
+      community:
+          Community.values.byName(json['community'] as String? ?? 'miyoushe'),
       recordHeaders: object(json['recordHeaders'])
           .map((key, value) => MapEntry(key, '$value')),
       roles: (json['roles'] as List)
@@ -150,6 +201,41 @@ class DailyNote {
         number(max)! > 0 &&
         number(current)! >= number(max)!;
     switch (game) {
+      case Game.wutheringWaves:
+      case Game.punishingGrayRaven:
+        final energy = object(
+            data[game == Game.wutheringWaves ? 'energyData' : 'actionData']);
+        final activity = object(
+            data[game == Game.wutheringWaves ? 'livenessData' : 'activeData']);
+        final reserve = object(data['storeEnergyData']);
+        return DailyNote(
+            syncedAt: at,
+            energy: number(energy['cur']),
+            capacity: number(energy['total']),
+            metrics: [
+              Metric('每日活跃', count(activity['cur'], activity['total']),
+                  complete: complete(activity['cur'], activity['total'])),
+              if (reserve.isNotEmpty)
+                Metric('备用结晶波片', count(reserve['cur'], reserve['total']))
+            ]);
+      case Game.nevernessToEverness:
+        return DailyNote(
+            syncedAt: at,
+            energy: number(data['staminaValue']),
+            capacity: number(data['staminaMaxValue']),
+            metrics: [
+              Metric('都市活力',
+                  count(data['citystaminaValue'], data['citystaminaMaxValue'])),
+              Metric(
+                  '今日活跃',
+                  number(data['dayvalue']) == null
+                      ? '暂未提供'
+                      : '${number(data['dayvalue'])} / 100',
+                  complete: (number(data['dayvalue']) ?? -1) >= 100)
+            ]);
+      case Game.towerOfFantasy:
+        return DailyNote(
+            syncedAt: at, metrics: const [Metric('日常数据', '此版本暂不支持')]);
       case Game.genshin:
         final expeditions =
             data['expeditions'] is List ? data['expeditions'] as List : null;

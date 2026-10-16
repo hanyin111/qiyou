@@ -4,6 +4,8 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../app_state.dart';
 import '../data/miyoushe_client.dart';
 import '../data/login_session.dart';
+import '../domain/models.dart';
+import '../data/community_login_session.dart';
 import 'design.dart';
 
 bool get supportsOfficialLogin =>
@@ -11,22 +13,33 @@ bool get supportsOfficialLogin =>
     const {TargetPlatform.windows, TargetPlatform.android, TargetPlatform.iOS}
         .contains(defaultTargetPlatform);
 
-bool isOfficialLoginUrl(Uri? url) =>
+bool isOfficialLoginUrl(Uri? url, {Community community = Community.miyoushe}) =>
     url != null &&
     url.scheme == 'https' &&
-    const ['mihoyo.com', 'miyoushe.com']
+    (switch (community) {
+      Community.miyoushe => const ['mihoyo.com', 'miyoushe.com'],
+      Community.kuro => const ['kurobbs.com', 'kurogame.com'],
+      Community.taygedo => const ['tajiduo.com', 'wanmei.com', 'laohu.com'],
+    })
         .any((domain) => url.host == domain || url.host.endsWith('.$domain'));
 
 class OfficialLoginPage extends StatefulWidget {
-  const OfficialLoginPage(this.state, {super.key});
+  const OfficialLoginPage(this.state,
+      {super.key, this.community = Community.miyoushe});
   final AppState state;
+  final Community community;
   @override
   State<OfficialLoginPage> createState() => _OfficialLoginPageState();
 }
 
 class _OfficialLoginPageState extends State<OfficialLoginPage> {
   InAppWebViewController? controller;
-  String host = 'user.mihoyo.com';
+  late String host = Uri.parse(startUrl).host;
+  String get startUrl => switch (widget.community) {
+        Community.miyoushe => 'https://user.mihoyo.com/',
+        Community.kuro => 'https://www.kurobbs.com/mc/',
+        Community.taygedo => 'https://www.tajiduo.com/bbs/index.html#/home',
+      };
   String? error;
   bool saving = false;
   double progress = 0;
@@ -38,6 +51,13 @@ class _OfficialLoginPageState extends State<OfficialLoginPage> {
       error = null;
     });
     try {
+      if (widget.community != Community.miyoushe) {
+        final credential =
+            await readCommunityLogin(controller!, widget.community);
+        await widget.state.connect(credential, community: widget.community);
+        if (mounted) Navigator.pop(context, true);
+        return;
+      }
       final session = await readSessionCookies(controller!);
       const allowed = {
         'account_id',
@@ -81,7 +101,9 @@ class _OfficialLoginPageState extends State<OfficialLoginPage> {
         appBar: AppBar(
           title:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('米哈游官方登录', style: TextStyle(fontSize: 16)),
+            Text(
+                '${widget.community == Community.miyoushe ? '米哈游' : widget.community.title}官方登录',
+                style: const TextStyle(fontSize: 16)),
             Text(host,
                 style:
                     TextStyle(fontSize: 11, color: context.palette.secondary))
@@ -108,8 +130,7 @@ class _OfficialLoginPageState extends State<OfficialLoginPage> {
           ),
           Expanded(
               child: InAppWebView(
-            initialUrlRequest:
-                URLRequest(url: WebUri('https://user.mihoyo.com/')),
+            initialUrlRequest: URLRequest(url: WebUri(startUrl)),
             initialSettings: InAppWebViewSettings(
               incognito: true,
               javaScriptEnabled: true,
@@ -125,12 +146,15 @@ class _OfficialLoginPageState extends State<OfficialLoginPage> {
               if (mounted) setState(() => progress = value / 100);
             },
             onLoadStart: (_, url) {
-              if (mounted && isOfficialLoginUrl(url)) {
+              if (mounted &&
+                  isOfficialLoginUrl(url, community: widget.community)) {
                 setState(() => host = url!.host);
               }
             },
             shouldOverrideUrlLoading: (_, action) async =>
-                action.isForMainFrame && !isOfficialLoginUrl(action.request.url)
+                action.isForMainFrame &&
+                        !isOfficialLoginUrl(action.request.url,
+                            community: widget.community)
                     ? NavigationActionPolicy.CANCEL
                     : NavigationActionPolicy.ALLOW,
             onReceivedError: (_, request, failure) {

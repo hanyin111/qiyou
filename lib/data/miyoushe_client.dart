@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import '../domain/models.dart';
+import 'community_client.dart';
 import 'record_verification.dart';
 import 'record_session_cookies.dart';
 import 'verification_diagnostics.dart';
@@ -46,7 +47,7 @@ class MiyousheProtocol {
   }
 }
 
-class MiyousheClient {
+class MiyousheClient implements CommunityClient {
   MiyousheClient({http.Client? transport, DateTime Function()? clock})
       : _http = transport ?? http.Client(),
         _clock = clock ?? DateTime.now;
@@ -104,6 +105,7 @@ class MiyousheClient {
     return bytes.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
   }
 
+  @override
   Future<Account> connect(String input, {String? existingDeviceId}) async {
     final values = parseCookie(input);
     final cookie =
@@ -121,8 +123,8 @@ class MiyousheClient {
     final seen = <String>{};
     for (final raw in data['list'] is List ? data['list'] as List : const []) {
       final item = object(raw);
-      final matching =
-          Game.values.where((game) => game.biz == item['game_biz']);
+      final matching = Game.values.where((game) =>
+          game.community == Community.miyoushe && game.biz == item['game_biz']);
       if (matching.isEmpty ||
           item['game_uid'] == null ||
           item['region'] == null) {
@@ -144,6 +146,7 @@ class MiyousheClient {
     return Account(id: id, cookie: cookie, deviceId: device, roles: roles);
   }
 
+  @override
   Future<DailyNote> daily(Account account, Role role) async {
     final path = _notePath(role.game);
     final key = _passKey(account, role);
@@ -174,6 +177,7 @@ class MiyousheClient {
         Game.genshin => '/game_record/app/genshin/api/dailyNote',
         Game.starRail => '/game_record/app/hkrpg/api/note',
         Game.zenless => '/event/game_record_zzz/api/zzz/note',
+        _ => throw ArgumentError('Unsupported MiYouShe game'),
       };
 
   String _passKey(Account account, Role role) =>
@@ -276,9 +280,11 @@ class MiyousheClient {
             'x-rpc-challenge_game': '8',
             'x-rpc-page': 'v1.0.14_#/zzz',
             'x-rpc-tool-verison': 'v1.0.14-zzz'
-          }
+          },
+        _ => throw ArgumentError('Unsupported MiYouShe game'),
       };
 
+  @override
   Future<SignStatus> signInfo(Account account, Role role) async {
     final data =
         await _request(account, _signHost(role), '${_signPath(role)}/info',
@@ -298,6 +304,7 @@ class MiyousheClient {
         : SignStatus.pending;
   }
 
+  @override
   Future<SignStatus> sign(Account account, Role role) async {
     // Query before every write. Never automatically retry an uncertain POST.
     if ((await signInfo(account, role)).isDone) return SignStatus.alreadySigned;
@@ -432,7 +439,7 @@ class MiyousheClient {
           ...?body?.values.whereType<String>()
         ]);
         await writeVerificationDiagnostic({
-          'version': '0.1.5',
+          'version': '0.1.6',
           'stage': stage!.name,
           'game': recordGame?.name,
           'retcode': code,
@@ -514,6 +521,7 @@ class MiyousheClient {
     };
   }
 
+  @override
   void close() => _http.close();
 }
 

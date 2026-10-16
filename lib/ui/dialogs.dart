@@ -121,6 +121,7 @@ class _ConnectDialogState extends State<ConnectDialog> {
   String? error;
   bool saving = false;
   bool consent = false;
+  Community community = Community.miyoushe;
   @override
   void dispose() {
     input.clear();
@@ -135,7 +136,7 @@ class _ConnectDialogState extends State<ConnectDialog> {
     return PopScope(
         canPop: !saving,
         child: AlertDialog(
-          title: Text('连接米游社',
+          title: Text('连接${community.title}',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
           content: SizedBox(
               width: 430,
@@ -148,6 +149,23 @@ class _ConnectDialogState extends State<ConnectDialog> {
                         style: TextStyle(
                             fontSize: 13, color: context.palette.secondary)),
                     SizedBox(height: 23),
+                    DropdownButtonFormField<Community>(
+                      initialValue: community,
+                      decoration: const InputDecoration(labelText: '游戏社区'),
+                      items: Community.values
+                          .map((c) =>
+                              DropdownMenuItem(value: c, child: Text(c.title)))
+                          .toList(),
+                      onChanged: saving
+                          ? null
+                          : (value) => setState(() {
+                                community = value!;
+                                input.clear();
+                                error = null;
+                                consent = false;
+                              }),
+                    ),
+                    const SizedBox(height: 18),
                     if (canConnect) ...[
                       if (supportsOfficialLogin) ...[
                         SizedBox(
@@ -161,7 +179,9 @@ class _ConnectDialogState extends State<ConnectDialog> {
                                                 .push<bool>(MaterialPageRoute(
                                                     builder: (_) =>
                                                         OfficialLoginPage(
-                                                            widget.state)));
+                                                            widget.state,
+                                                            community:
+                                                                community)));
                                         if (connected == true &&
                                             context.mounted) {
                                           Navigator.pop(context, true);
@@ -171,7 +191,10 @@ class _ConnectDialogState extends State<ConnectDialog> {
                                 label: Text('打开官方页面登录'))),
                         SizedBox(height: 20),
                       ],
-                      Text('或导入已有凭证（Cookie）',
+                      Text(
+                          community == Community.miyoushe
+                              ? '或导入已有凭证（Cookie）'
+                              : '或导入已有登录令牌',
                           style: TextStyle(
                               fontSize: 13, fontWeight: FontWeight.w600)),
                       SizedBox(height: 9),
@@ -184,10 +207,13 @@ class _ConnectDialogState extends State<ConnectDialog> {
                           autofillHints: [],
                           enabled: !saving,
                           decoration: InputDecoration(
-                              hintText: '在本机粘贴完整的米游社 Cookie',
+                              hintText: community == Community.miyoushe
+                                  ? '在本机粘贴完整的米游社 Cookie'
+                                  : '在本机粘贴${community.title} Token',
                               prefixIcon: Icon(Icons.key_outlined, size: 18))),
                       SizedBox(height: 15),
-                      Text('校验成功后自动读取已绑定的国服角色。当前支持原神、星穹铁道、绝区零。',
+                      Text(
+                          '校验成功后读取已绑定的国服角色。支持${community.games}。${community == Community.taygedo ? '幻塔目前支持角色和签到，日常数据待适配。' : ''}',
                           style: TextStyle(
                               fontSize: 12,
                               color: context.palette.secondary,
@@ -199,7 +225,8 @@ class _ConnectDialogState extends State<ConnectDialog> {
                               color: context.palette.secondary,
                               height: 1.8)),
                       SizedBox(height: 12),
-                      Text('连接会读取账号、角色及游戏状态；点击签到时向米游社提交请求。可在账号页移除凭证和角色数据。',
+                      Text(
+                          '连接会读取账号、角色及游戏状态；点击签到时向${community.title}提交请求。可在账号页移除凭证和角色数据。',
                           style: TextStyle(
                               fontSize: 11, color: context.palette.secondary)),
                       CheckboxListTile(
@@ -263,7 +290,8 @@ class _ConnectDialogState extends State<ConnectDialog> {
                               error = null;
                             });
                             try {
-                              await widget.state.connect(input.text);
+                              await widget.state
+                                  .connect(input.text, community: community);
                               input.clear();
                               if (context.mounted) Navigator.pop(context, true);
                             } catch (failure) {

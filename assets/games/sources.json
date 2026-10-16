@@ -22,5 +22,37 @@
     "url": "https://bbs-static.miyoushe.com/upload/op_manual_upload/misc/genshin_6th_anniversary/1789872389328genshin_6th_anniv_icon.png",
     "sha256": "9ebc7d6718cbcd8ad717feb2bd10660b190e5436927dbb1147b20e4b29602e9b",
     "rights": "miHoYo and the respective rights holders; excluded from the source-code MIT license"
+  },
+  {
+    "game": "鸣潮",
+    "url": "https://web-static.kurobbs.com/resource/prod/assets/mc-icon-LCkP-zLp.png",
+    "catalog": "https://www.kurobbs.com/mc/",
+    "file": "assets/games/wutheringWaves.png",
+    "rights": "Kuro Games and the respective rights holders; excluded from the source-code MIT license",
+    "sha256": "f3c5a69964cdc636cf5a7307855f26f9123fc4bb4e61ef6b91c22ce64a8ea5fc"
+  },
+  {
+    "game": "战双帕弥什",
+    "url": "https://web-static.kurobbs.com/resource/prod/assets/pns-icon-C6fcGZb5.png",
+    "catalog": "https://www.kurobbs.com/pns/",
+    "file": "assets/games/punishingGrayRaven.png",
+    "rights": "Kuro Games and the respective rights holders; excluded from the source-code MIT license",
+    "sha256": "862a44e0e42ed969ce9f93d68727c59364e19e646a3bdc1d40d052d5070af57e"
+  },
+  {
+    "game": "异环",
+    "url": "https://serverlist-yh.wmupd.com/notice_test5/pic/touxiang-yihuan.png",
+    "catalog": "https://bbs-api.tajiduo.com/apihub/wapi/getAllCommunity",
+    "file": "assets/games/nevernessToEverness.png",
+    "rights": "Perfect World and the respective rights holders; excluded from the source-code MIT license",
+    "sha256": "dc4cb225789253f601bfde03dcd7b64ea3fa22b237cc7f07961dc50e05f34dd6"
+  },
+  {
+    "game": "幻塔",
+    "url": "https://serverlist-yh.wmupd.com/notice_test5/pic/touxiang-huanta.png",
+    "catalog": "https://bbs-api.tajiduo.com/apihub/wapi/getAllCommunity",
+    "file": "assets/games/towerOfFantasy.png",
+    "rights": "Perfect World and the respective rights holders; excluded from the source-code MIT license",
+    "sha256": "5b58e3347577bb9a4e02b66bad0815e666a2306567671d04df98cfa8ed7bcd59"
   }
 ]

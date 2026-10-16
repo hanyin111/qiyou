@@ -95,7 +95,12 @@ class GameFilters extends StatelessWidget {
   Widget build(BuildContext context) => SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(children: [
-        for (final game in <Game?>[null, ...Game.values])
+        for (final game in <Game?>[
+          null,
+          ...Game.values.where((g) =>
+              state.entries.any((e) => e.role.game == g) ||
+              state.tasks.any((t) => t.game == g))
+        ])
           Padding(
               padding: EdgeInsets.only(right: 8),
               child: ChoiceChip(
@@ -235,7 +240,11 @@ class GameCard extends StatelessWidget {
             Text(entry.error!,
                 style: TextStyle(
                     fontSize: 11, color: context.palette.error, height: 1.7)),
-            if (!state.demo && supportsOfficialLogin && entry.noteError != null)
+            if (!state.demo &&
+                supportsOfficialLogin &&
+                entry.noteError != null &&
+                (entry.role.game.community == Community.miyoushe ||
+                    !entry.noteNeedsVerification))
               TextButton(
                   onPressed: state.busy
                       ? null
@@ -258,7 +267,7 @@ class GameCard extends StatelessWidget {
 
   String _recovery(DailyNote? note) {
     final time = note?.remainingAt(DateTime.now());
-    if (time == null) return '回满时间待同步';
+    if (time == null) return note == null ? '回满时间待同步' : '回满时间暂未提供';
     if (time.inSeconds <= 0) return '预计已回满';
     final minutes = (time.inSeconds / 60).ceil();
     return minutes >= 60
