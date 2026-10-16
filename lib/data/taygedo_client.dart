@@ -44,24 +44,33 @@ class TaygedoClient implements CommunityClient {
   @override
   Future<Account> connect(String input, {String? existingDeviceId}) async {
     final auth = communityCredential(input, allowCookie: true);
-    final device = existingDeviceId ?? newCommunityDeviceId();
+    final device = auth['did'] ?? existingDeviceId ?? newCommunityDeviceId();
     final metadata = {
+      if (auth['did'] != null) 'session-device': device,
       if (auth['cookie'] != null) 'auth-type': 'cookie',
       if (auth['cookie'] != null && auth['token'] != null)
         'authorization': auth['token']!,
       if (auth['user-agent'] != null) 'user-agent': auth['user-agent']!
     };
     var account = Account(
-        id: '',
+        id: auth['uid'] == null ? '' : 'taygedo:${auth['uid']}',
         cookie: auth['cookie'] ?? auth['token']!,
         deviceId: device,
         community: Community.taygedo,
         recordHeaders: metadata,
         roles: const []);
+    final nativeLogin = auth['uid'] != null && auth['cookie'] == null;
     final profile = object(await _api.request(
-        '/usercenter/wapi/getUserFullInfo', _headers(account)));
+        nativeLogin
+            ? '/usercenter/api/getUserFullInfo'
+            : '/usercenter/wapi/getUserFullInfo',
+        _headers(account, native: nativeLogin)));
     final uid =
         requiredText(object(profile['user'])['uid'], '塔吉多未返回账号编号，请重新登录。');
+    if (auth['uid'] != null && auth['uid'] != uid) {
+      throw const MiyousheException(
+          ApiFailure.credentials, '塔吉多登录账号信息不一致，请重新登录。');
+    }
     account = Account(
         id: 'taygedo:$uid',
         cookie: account.cookie,
@@ -124,7 +133,7 @@ class TaygedoClient implements CommunityClient {
       return DailyNote.parse(role.game, const {}, _clock());
     }
     final data = object(await _api.request(
-        '/apihub/awapi/yh/roleHome', _headers(account),
+        '/apihub/awapi/yh/roleHome', _headers(account, native: true),
         query: {'roleId': role.uid}));
     final note = DailyNote.parse(role.game, data, _clock());
     if (note.energy == null || note.capacity == null || note.capacity! <= 0) {
@@ -138,7 +147,7 @@ class TaygedoClient implements CommunityClient {
   Future<SignStatus> signInfo(Account account, Role role) async {
     _check(account, role);
     final data = object(await _api.request(
-        '/apihub/awapi/signin/state', _headers(account),
+        '/apihub/awapi/signin/state', _headers(account, native: true),
         query: {'gameId': role.game.communityGameId}));
     return strictSignState(data['todaySign'], Community.taygedo);
   }
@@ -146,7 +155,7 @@ class TaygedoClient implements CommunityClient {
   @override
   Future<SignStatus> sign(Account account, Role role) async {
     if ((await signInfo(account, role)).isDone) return SignStatus.alreadySigned;
-    await _api.request('/apihub/awapi/sign', _headers(account),
+    await _api.request('/apihub/awapi/sign', _headers(account, native: true),
         form: {'roleId': role.uid, 'gameId': role.game.communityGameId});
     if (!(await signInfo(account, role)).isDone) {
       throw const MiyousheException(

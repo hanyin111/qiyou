@@ -25,6 +25,11 @@ class CommunityHttp {
           ..headers.addAll({'accept': 'application/json', ...headers});
         if (form != null) request.bodyFields = form;
         final response = await transport.send(request);
+        if (community == Community.taygedo && response.statusCode == 402) {
+          throw const MiyousheException(
+              ApiFailure.expired, '塔吉多游戏服务未接受当前会话（HTTP 402），请重新连接并使用手机号登录。',
+              code: 402);
+        }
         if (response.statusCode == 401 || response.statusCode == 403) {
           throw MiyousheException(
               ApiFailure.expired, '${community.title}登录失效，请重新连接。');
@@ -55,7 +60,7 @@ class CommunityHttp {
               ...?query?.values,
             ]);
             throw MiyousheException(ApiFailure.protocol,
-                '库街区$operation失败（10901）。请重新连接库街区，以同步官方登录设备。${reason.isEmpty ? '' : '\n官方提示：$reason'}',
+                '库街区$operation失败（10901）。请重新连接并完成官方短信登录，获取游戏数据会话。${reason.isEmpty ? '' : '\n官方提示：$reason'}',
                 code: code);
           }
           final expired = community == Community.kuro

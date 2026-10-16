@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "uses_user_account": false,
+  "performs_login": false,
+  "performs_sign_in": false,
+  "synthetic_app_channel_and_session_bridge": true,
+  "version": "0.1.8",
+  "scope": "Anonymous official-origin Windows WebView, synthetic XMLHttpRequest response only. Production app login channel script and native token bridge passed; real SMS login and game API acceptance remain unverified."
+}

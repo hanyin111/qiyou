@@ -1,7 +1,7 @@
 name: qiyou
 description: "栖游：轻量的多游戏日常与体力管理。"
 publish_to: 'none'
-version: 0.1.7+8
+version: 0.1.8+9
 
 environment:
   sdk: '>=3.6.0 <4.0.0'
@@ -11,6 +11,7 @@ dependencies:
     sdk: flutter
   http: ^1.6.0
   crypto: ^3.0.7
+  pointycastle: ^4.0.0
   cupertino_icons: ^1.0.8
   flutter_inappwebview: ^6.1.5
 

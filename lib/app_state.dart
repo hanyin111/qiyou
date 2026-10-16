@@ -237,6 +237,7 @@ class AppState extends ChangeNotifier {
           .firstOrNull;
       if (community != Community.miyoushe &&
           previous != null &&
+          account.recordHeaders['session-device'] != account.deviceId &&
           !(community == Community.kuro &&
               account.recordHeaders['devcode'] != null)) {
         account = Account(

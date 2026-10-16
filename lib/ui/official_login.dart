@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -6,6 +7,8 @@ import '../data/miyoushe_client.dart';
 import '../data/login_session.dart';
 import '../domain/models.dart';
 import '../data/community_login_session.dart';
+import '../data/kuro_login_session.dart';
+import '../data/community_http.dart' show newCommunityDeviceId;
 import 'design.dart';
 
 bool get supportsOfficialLogin =>
@@ -34,6 +37,8 @@ class OfficialLoginPage extends StatefulWidget {
 
 class _OfficialLoginPageState extends State<OfficialLoginPage> {
   InAppWebViewController? controller;
+  final String loginNonce = newCommunityDeviceId();
+  String? kuroCredential;
   late String host = Uri.parse(startUrl).host;
   String get startUrl => switch (widget.community) {
         Community.miyoushe => 'https://user.mihoyo.com/',
@@ -43,6 +48,11 @@ class _OfficialLoginPageState extends State<OfficialLoginPage> {
   String? error;
   bool saving = false;
   double progress = 0;
+  @override
+  void dispose() {
+    kuroCredential = null;
+    super.dispose();
+  }
 
   Future<void> connect() async {
     if (controller == null || saving) return;
@@ -52,8 +62,16 @@ class _OfficialLoginPageState extends State<OfficialLoginPage> {
     });
     try {
       if (widget.community != Community.miyoushe) {
-        final credential =
-            await readCommunityLogin(controller!, widget.community);
+        final String credential;
+        if (widget.community == Community.kuro) {
+          if (kuroCredential == null) {
+            throw const MiyousheException(ApiFailure.credentials,
+                '请在下方官方页面重新完成短信登录，以取得游戏数据会话；仅网页登录状态不能连接体力接口。');
+          }
+          credential = kuroCredential!;
+        } else {
+          credential = await readCommunityLogin(controller!, widget.community);
+        }
         await widget.state.connect(credential, community: widget.community);
         if (mounted) Navigator.pop(context, true);
         return;
@@ -121,7 +139,13 @@ class _OfficialLoginPageState extends State<OfficialLoginPage> {
             width: double.infinity,
             color: context.palette.surface,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Text(error ?? '在下方官方页面登录，完成后点击右上角连接。密码由官方页面处理。',
+            child: Text(
+                error ??
+                    (widget.community == Community.kuro
+                        ? kuroCredential == null
+                            ? '请使用下方官方短信登录。完成后点击右上角连接；手机号和验证码由官方页面处理。'
+                            : '已取得库街区游戏登录会话，请点击右上角连接。'
+                        : '在下方官方页面登录，完成后点击右上角连接。密码由官方页面处理。'),
                 style: TextStyle(
                     fontSize: 12,
                     color: error == null
@@ -130,6 +154,15 @@ class _OfficialLoginPageState extends State<OfficialLoginPage> {
           ),
           Expanded(
               child: InAppWebView(
+            initialUserScripts: widget.community == Community.kuro
+                ? UnmodifiableListView([
+                    UserScript(
+                        source: kuroAppLoginScript(loginNonce),
+                        injectionTime:
+                            UserScriptInjectionTime.AT_DOCUMENT_START,
+                        forMainFrameOnly: true)
+                  ])
+                : null,
             initialUrlRequest: URLRequest(url: WebUri(startUrl)),
             initialSettings: InAppWebViewSettings(
               incognito: true,
@@ -141,7 +174,33 @@ class _OfficialLoginPageState extends State<OfficialLoginPage> {
               saveFormData: false,
               supportMultipleWindows: false,
             ),
-            onWebViewCreated: (value) => controller = value,
+            onWebViewCreated: (value) {
+              controller = value;
+              if (widget.community == Community.kuro) {
+                value.addJavaScriptHandler(
+                    handlerName: 'qiyouKuroAppSession',
+                    callback: (args) async {
+                      if (!mounted || args.length != 1) return;
+                      final current = await value.getUrl();
+                      if (current?.scheme != 'https' ||
+                          current?.host != 'www.kurobbs.com') {
+                        return;
+                      }
+                      try {
+                        final credential =
+                            kuroAppLoginCredential(args.single, loginNonce);
+                        if (mounted && credential != null) {
+                          setState(() {
+                            kuroCredential = credential;
+                            error = null;
+                          });
+                        }
+                      } on MiyousheException catch (failure) {
+                        if (mounted) setState(() => error = failure.message);
+                      }
+                    });
+              }
+            },
             onProgressChanged: (_, value) {
               if (mounted) setState(() => progress = value / 100);
             },

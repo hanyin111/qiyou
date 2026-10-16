@@ -33,7 +33,11 @@ class StubCommunity implements CommunityClient {
           id: '${community.name}:7',
           cookie: input,
           deviceId: browserDevice ?? existingDeviceId ?? 'new-device',
-          recordHeaders: {if (browserDevice != null) 'devcode': browserDevice!},
+          recordHeaders: {
+            if (browserDevice != null) 'devcode': browserDevice!,
+            if (browserDevice != null && community == Community.taygedo)
+              'session-device': browserDevice!,
+          },
           community: community,
           roles: [
             Role(
@@ -69,6 +73,20 @@ class StubCommunity implements CommunityClient {
 }
 
 void main() {
+  test('Taygedo App login replaces the prior web-session device', () async {
+    final store = MemoryStore();
+    final tjd = StubCommunity(Community.taygedo, Game.nevernessToEverness);
+    final state = AppState(bridge: store, taygedo: tjd);
+    addTearDown(state.dispose);
+    await state.initialize();
+    await state.connect('web-session', community: Community.taygedo);
+    tjd.browserDevice = 'native-login-device';
+    await state.connect('app-session', community: Community.taygedo);
+    expect(state.accounts.single.deviceId, 'native-login-device');
+    expect(state.accounts.single.cookie, 'app-session');
+    expect(state.accounts.single.recordHeaders['session-device'],
+        'native-login-device');
+  });
   test(
       'Reconnecting Kuro installs the real login device and preserves other accounts',
       () async {

@@ -1,6 +1,20 @@
 # 库街区与塔吉多适配记录
 
-核对日期：2026-10-16。版本：0.1.7（保留 0.1.6 验证记录）。此记录只含公开协议，不包含账号凭证。
+核对日期：2026-10-16。版本：0.1.8（保留早期验证记录）。此记录只含公开协议，不包含账号凭证。
+
+## 0.1.8：区分网页与游戏会话
+
+0.1.7 用户反馈：鸣潮获取数据令牌返回 10901“禁止访问”；塔吉多可以读到异环角色，但体力及签到状态返回 HTTP 402。
+
+本机只读诊断复现：原库街区网页登录 Token 在 `source=h5` 时被数据令牌接口拒绝；同一个 Token 改为原生通道后返回 220，无有效 App 登录态。塔吉多 Cookie、增加 DS 签名、把 `tjd_token` 当作 Authorization 均不能读取游戏接口；`/usercenter/wapi/login` 返回重定向，没有下发 App 会话。不能靠更换设备标识、请求头或重复刷新解决。诊断不执行签到，不修改账号存储，输出仅含状态码及字段存在性。
+
+库街区作者的[接口记录](https://github.com/TomyJan/Kuro-API-Collection/blob/main/API/user/sdkLoginForH5.md)明确区分 Web 与 App Token。官方当前前端短信登录调用 `/user/sdkLogin`，只传 mobile 和 code；0.1.8 仍由官方表单负责手机号、短信及人工验证码，在当前私密网页中把该次登录选择为 `source=android` 的 App 通道，并追加同一浏览器 `dc` 作为 devCode。不提取手机号和验证码字段，只将服务端成功响应中的社区 Token 及设备信息交给原生端。消息带随机 nonce 并验证当前官方 origin，Token 由官方角色接口再次校验后才保存。旧网页 Token 不再作为连接游戏接口的成功依据。
+
+塔吉多[官方异环工具](https://webstatic.tajiduo.com/bbs/yh-game-record/)从 App 桥接 `getUserData` 取得 accessToken，并将 HTTP 402 提示为需要重新登录。0.1.8 改用本人操作的手机号短信登录：`user.laohu.com/m/newApi/sendPhoneCaptchaWithOutLogin` → 校验短信 → `/openApi/sms/new/login` → `bbs-api.tajiduo.com/usercenter/api/login`。协议按 [NTEUID](https://github.com/tyql688/NTEUID) 与 [taygedo-auto-attendance](https://github.com/zzstar101/taygedo-auto-attendance) 的直接官方请求核对，独立 Dart 实现，未使用代理；未借用官方工具内的演示令牌。签名与 AES-ECB/PKCS7 属于公开客户端协议；设备型号字段标识 Qiyou 与实际平台，不伪造手机硬件。若官方要求额外验证则停止，不自动解题或重试验证码。
+
+手机号、验证码、SDK 中间令牌不保存。本人点击发送才请求短信，界面设 60 秒重发倒计时。只将最终塔吉多访问令牌、服务端账号编号与本次登录设备送入安全存储；旧账号重新连接时替换为实际登录设备。访问令牌过期时需要重新登录，本版不保存尚未使用的刷新令牌。HTTP 402 现在明确提示重新连接游戏服务。
+
+64 项测试通过，含独立 AES 测试向量、签名、三步身份交换、实际登录设备替换、错误脱敏和原有米游社回归。Windows 匿名桥接检查通过，见 [windows-kuro-login-0.1.8.json](windows-kuro-login-0.1.8.json)；空表单请求也确认 App 通道响应允许当前官方网页 origin。模拟协议与匿名桥接检查不能代替本人短信登录后的真实查询和签到实测。
 
 ## 0.1.7：真实反馈后的会话修正
 

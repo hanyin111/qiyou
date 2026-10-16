@@ -15,7 +15,7 @@ class KuroClient implements CommunityClient {
 
   Map<String, String> _headers(Account account) => {
         'token': account.cookie,
-        'source': 'h5',
+        'source': 'android',
         'version': '3.1.3',
         'origin': 'https://www.kurobbs.com',
         'referer': 'https://www.kurobbs.com/',

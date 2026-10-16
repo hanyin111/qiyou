@@ -4,6 +4,7 @@ import '../domain/models.dart';
 import '../data/miyoushe_client.dart';
 import 'design.dart';
 import 'official_login.dart';
+import 'taygedo_login.dart';
 
 Future<void> showGameDetails(BuildContext context, AppState state,
     GameEntry entry, ValueChanged<String> toast) async {
@@ -177,8 +178,11 @@ class _ConnectDialogState extends State<ConnectDialog> {
                                         final connected =
                                             await Navigator.of(context)
                                                 .push<bool>(MaterialPageRoute(
-                                                    builder: (_) =>
-                                                        OfficialLoginPage(
+                                                    builder: (_) => community ==
+                                                            Community.taygedo
+                                                        ? TaygedoLoginPage(
+                                                            widget.state)
+                                                        : OfficialLoginPage(
                                                             widget.state,
                                                             community:
                                                                 community)));
@@ -188,7 +192,9 @@ class _ConnectDialogState extends State<ConnectDialog> {
                                         }
                                       },
                                 icon: Icon(Icons.login, size: 18),
-                                label: Text('打开官方页面登录'))),
+                                label: Text(community == Community.taygedo
+                                    ? '手机号登录'
+                                    : '打开官方页面登录'))),
                         SizedBox(height: 20),
                       ],
                       Text(
