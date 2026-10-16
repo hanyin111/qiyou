@@ -25,13 +25,15 @@ class StubCommunity implements CommunityClient {
   final Community community;
   final Game game;
   bool failNote = false;
+  String? browserDevice;
   int reads = 0, signs = 0;
   @override
   Future<Account> connect(String input, {String? existingDeviceId}) async =>
       Account(
           id: '${community.name}:7',
           cookie: input,
-          deviceId: existingDeviceId ?? 'new-device',
+          deviceId: browserDevice ?? existingDeviceId ?? 'new-device',
+          recordHeaders: {if (browserDevice != null) 'devcode': browserDevice!},
           community: community,
           roles: [
             Role(
@@ -67,6 +69,23 @@ class StubCommunity implements CommunityClient {
 }
 
 void main() {
+  test(
+      'Reconnecting Kuro installs the real login device and preserves other accounts',
+      () async {
+    final store = MemoryStore();
+    final kuro = StubCommunity(Community.kuro, Game.wutheringWaves);
+    final state = AppState(bridge: store, kuro: kuro);
+    addTearDown(state.dispose);
+    await state.initialize();
+    await state.connect('synthetic-old', community: Community.kuro);
+    expect(state.accounts.single.deviceId, 'new-device');
+    kuro.browserDevice = 'real-browser-device';
+    await state.connect('synthetic-new', community: Community.kuro);
+    expect(state.accounts.single.deviceId, 'real-browser-device');
+    expect(
+        state.accounts.single.recordHeaders['devcode'], 'real-browser-device');
+    expect(state.accounts, hasLength(1));
+  });
   test(
       'Same numeric IDs coexist across communities, reload and route independently',
       () async {

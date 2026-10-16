@@ -38,11 +38,13 @@ class _CommunityLoginProbeState extends State<CommunityLoginProbe> {
     if (finished) return;
     finished = true;
     deadline?.cancel();
-    final passed = result['kuro'] == true && result['taygedo'] == true;
+    final passed = result['kuro'] == true &&
+        result['taygedo'] == true &&
+        result['private_httponly_cookie'] == true;
     final path = Platform.environment['QIYOU_COMMUNITY_LOGIN_REPORT'];
     if (path != null) {
       await File(path).writeAsString(jsonEncode({
-        'version': '0.1.6',
+        'version': '0.1.7',
         'passed': passed,
         'official_page_and_session_reader': result,
         'uses_user_account': false,
@@ -62,6 +64,35 @@ class _CommunityLoginProbeState extends State<CommunityLoginProbe> {
       // Never output or store its value, even in this fresh private profile.
       result[community.name] =
           data['user-agent'] is String && data.containsKey('token');
+      if (community == Community.kuro) {
+        result['kuro'] = result['kuro'] == true &&
+            data['did'] is String &&
+            (data['did'] as String).isNotEmpty &&
+            data['did'] == data['devcode'];
+      } else {
+        // Synthetic HttpOnly Cookie on the API origin, in this actual private
+        // WebView. This reproduces a cookie-only login without using an account.
+        await c.callDevToolsProtocolMethod(
+            methodName: 'Network.setCookie',
+            parameters: {
+              'url': 'https://bbs-api.tajiduo.com/',
+              'name': 'qiyou_probe',
+              'value': 'synthetic-private-session',
+              'httpOnly': true,
+              'secure': true,
+              'path': '/',
+            });
+        final credential =
+            object(jsonDecode(await readCommunityLogin(c, Community.taygedo)));
+        result['private_httponly_cookie'] = '${credential['cookie']}'
+            .contains('qiyou_probe=synthetic-private-session');
+        await c.callDevToolsProtocolMethod(
+            methodName: 'Network.deleteCookies',
+            parameters: {
+              'url': 'https://bbs-api.tajiduo.com/',
+              'name': 'qiyou_probe',
+            });
+      }
     } catch (_) {
       result[community.name] = false;
     }

@@ -235,7 +235,10 @@ class AppState extends ChangeNotifier {
       final previous = accounts
           .where((a) => a.id == account.id && a.community == community)
           .firstOrNull;
-      if (community != Community.miyoushe && previous != null) {
+      if (community != Community.miyoushe &&
+          previous != null &&
+          !(community == Community.kuro &&
+              account.recordHeaders['devcode'] != null)) {
         account = Account(
             id: account.id,
             cookie: account.cookie,

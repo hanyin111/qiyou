@@ -28,7 +28,12 @@ class KuroClient implements CommunityClient {
   @override
   Future<Account> connect(String input, {String? existingDeviceId}) async {
     final auth = communityCredential(input);
-    final device = existingDeviceId ?? auth['did'] ?? newCommunityDeviceId();
+    // Data tokens are tied to the device used by the official login. A newly
+    // generated ID cannot replace the browser's dc value.
+    final device = auth['did'] ??
+        auth['devcode'] ??
+        existingDeviceId ??
+        newCommunityDeviceId();
     final headers = {
       for (final key in ['devcode', 'user-agent'])
         if (auth[key] != null) key: auth[key]!

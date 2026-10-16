@@ -1,0 +1,12 @@
+{
+  "version": "0.1.7",
+  "passed": true,
+  "official_page_and_session_reader": {
+    "kuro": true,
+    "taygedo": true,
+    "private_httponly_cookie": true
+  },
+  "uses_user_account": false,
+  "performs_sign_in": false,
+  "scope": "Anonymous native Windows WebView read actual Kuro dc and a synthetic HttpOnly Cookie for the Taygedo API origin through production helpers. No account or sign-in was used; real account data access remains unverified."
+}

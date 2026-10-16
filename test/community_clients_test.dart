@@ -51,6 +51,88 @@ const tjdAccount = Account(
     roles: [nte, tof]);
 
 void main() {
+  test('Taygedo accepts private API Cookie login without localStorage token',
+      () async {
+    final input = communityLoginCredential(Community.taygedo, {
+      'token': null,
+      'user-agent': 'synthetic-browser'
+    }, apiCookies: {
+      'tjd_session': 'synthetic-session',
+      'bad\r\nname': 'discard'
+    });
+    final values = communityCredential(input, allowCookie: true);
+    expect(values['cookie'], 'tjd_session=synthetic-session');
+    expect(values.containsKey('token'), isFalse);
+    final requests = <http.Request>[];
+    final client = TaygedoClient(transport: MockClient((request) async {
+      requests.add(request);
+      if (request.url.path.contains('getUserFullInfo')) {
+        return reply({
+          'user': {'uid': '7'}
+        });
+      }
+      if (request.url.path.contains('getGameRecordCard')) {
+        return reply([
+          {
+            'gameId': 1289,
+            'bindRoleInfo': {'roleId': 2001}
+          }
+        ]);
+      }
+      return reply({'todaySign': true});
+    }));
+    addTearDown(client.close);
+    final account = await client.connect(input);
+    final restored = Account.fromJson(account.toJson());
+    expect(await client.signInfo(restored, restored.roles.single),
+        SignStatus.alreadySigned);
+    for (final request in requests) {
+      expect(request.headers['cookie'], 'tjd_session=synthetic-session');
+      expect(request.headers.containsKey('authorization'), isFalse);
+      expect(request.headers['origin'], 'https://www.tajiduo.com');
+    }
+    // The same JSON envelope must never turn a Kuro token into Cookie auth.
+    expect(() => communityCredential(input), throwsA(isA<MiyousheException>()));
+  });
+  test('Kuro uses the browser login device instead of an unrelated saved ID',
+      () async {
+    final client = KuroClient(transport: MockClient((request) async {
+      expect(request.headers['devcode'], 'official-browser-dc');
+      expect(request.headers['did'], 'official-browser-dc');
+      if (request.url.path.endsWith('/list')) {
+        return reply([
+          {'userId': '7', 'roleId': '1001', 'serverId': 'real-server'}
+        ]);
+      }
+      return reply({'accessToken': 'synthetic-data-token'});
+    }));
+    addTearDown(client.close);
+    final account = await client.connect(
+        jsonEncode({
+          'token': 'synthetic-kuro',
+          'did': 'official-browser-dc',
+          'devcode': 'official-browser-dc'
+        }),
+        existingDeviceId: 'unrelated-old-device');
+    expect(account.deviceId, 'official-browser-dc');
+    expect(communitySessionScript(Community.kuro), contains("getItem('dc')"));
+  });
+  test('Kuro 10901 identifies failing step and redacts credentials', () async {
+    final client = KuroClient(
+        transport: MockClient((request) async => http.Response(
+            jsonEncode({'code': 10901, 'msg': '设备 synthetic-kuro test-device'}),
+            200,
+            headers: {'content-type': 'application/json'})));
+    addTearDown(client.close);
+    await expectLater(
+        client.daily(kuroAccount, ww),
+        throwsA(isA<MiyousheException>()
+            .having((e) => e.message, 'operation', contains('获取鸣潮数据令牌'))
+            .having((e) => e.message.contains('synthetic-kuro'),
+                'token redacted', isFalse)
+            .having((e) => e.message.contains('test-device'), 'device redacted',
+                isFalse)));
+  });
   test('Old encrypted account schema migrates to MiYouShe', () {
     final old = {
       'id': '7',
@@ -87,6 +169,9 @@ void main() {
         contains("getItem('auth_token')"));
     expect(communitySessionScript(Community.taygedo),
         contains("getItem('token')"));
+    expect(
+        () => communityLoginCredential(Community.kuro, {'token': 'synthetic'}),
+        throwsA(isA<MiyousheException>()));
     final session = communityCredential(jsonEncode({
       'token': 'synthetic',
       'Cookie': 'must-discard',

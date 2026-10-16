@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 import '../domain/models.dart';
 import 'miyoushe_client.dart';
+import 'verification_diagnostics.dart' show safeVerificationReason;
 
 // One fixed official host per client. Never follow a credential-bearing redirect.
 class CommunityHttp {
@@ -42,6 +43,21 @@ class CommunityHttp {
         final json = object(jsonDecode(utf8.decode(bytes)));
         final code = number(json['code']);
         if (!acceptedCodes.contains(code)) {
+          if (community == Community.kuro && code == 10901) {
+            final operation = switch (path) {
+              '/aki/roleBox/requestToken' => '获取鸣潮数据令牌',
+              '/gamer/widget/game3/getData' => '读取鸣潮体力',
+              _ => '查询',
+            };
+            final reason = safeVerificationReason(json['msg'], [
+              ...headers.values,
+              ...?form?.values,
+              ...?query?.values,
+            ]);
+            throw MiyousheException(ApiFailure.protocol,
+                '库街区$operation失败（10901）。请重新连接库街区，以同步官方登录设备。${reason.isEmpty ? '' : '\n官方提示：$reason'}',
+                code: code);
+          }
           final expired = community == Community.kuro
               ? const {220, 221, 222, 230}.contains(code)
               : const {401, 403, 10001, 10002}.contains(code);
@@ -95,7 +111,8 @@ String newCommunityDeviceId() =>
 
 // Credentials are opaque strings or a minimal JSON envelope from the official
 // WebView. Whitelist metadata; never accept arbitrary request headers or hosts.
-Map<String, String> communityCredential(String input) {
+Map<String, String> communityCredential(String input,
+    {bool allowCookie = false}) {
   final clean = input.trim();
   if (clean.isEmpty ||
       clean.length > 24000 ||
@@ -107,7 +124,14 @@ Map<String, String> communityCredential(String input) {
   if (clean.startsWith('{')) {
     try {
       final json = object(jsonDecode(clean));
-      for (final key in ['token', 'uid', 'devcode', 'did', 'user-agent']) {
+      for (final key in [
+        'token',
+        'uid',
+        'devcode',
+        'did',
+        'user-agent',
+        if (allowCookie) 'cookie'
+      ]) {
         final value = json[key];
         if (value is String &&
             value.isNotEmpty &&
@@ -122,7 +146,7 @@ Map<String, String> communityCredential(String input) {
   } else {
     values['token'] = clean;
   }
-  if (values['token'] == null) {
+  if (values['token'] == null && (!allowCookie || values['cookie'] == null)) {
     throw const MiyousheException(
         ApiFailure.credentials, '未检测到登录令牌，请在官方页面重新登录。');
   }

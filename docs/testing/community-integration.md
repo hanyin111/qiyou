@@ -1,13 +1,24 @@
 # 库街区与塔吉多适配记录
 
-核对日期：2026-10-16。版本：0.1.6。此记录只含公开协议，不包含账号凭证。
+核对日期：2026-10-16。版本：0.1.7（保留 0.1.6 验证记录）。此记录只含公开协议，不包含账号凭证。
+
+## 0.1.7：真实反馈后的会话修正
+
+0.1.6 用户反馈：塔吉多网页已显示头像或昵称，点击连接仍提示未检测登录；库街区可以连接并读到角色，鸣潮卡片刷新报 10901。此前匿名检查仅证明页面与脚本可运行，不能证明完整账号登录和查询成功。
+
+- 塔吉多官方 PC 前端的请求客户端设置 `withCredentials: true`，`localStorage.token` 只是可选 Authorization 补充；官方登录重定向后可以仅持有 Cookie。0.1.7 从实际隐私 WebView 读取 `bbs-api.tajiduo.com` 的 Cookie，支持不含本地 Token 的会话，先由官方个人信息接口校验后再保存。令牌登录继续兼容，Cookie 会话加密保存并在后续查询中恢复；不读取或转发 `id.wanmei.com`、`user.laohu.com` 的 Cookie。
+- 库街区官方 `index-DCU6Kl-8.js` 从 `localStorage.dc` 初始化 `DEV_CODE`，`useConfig-DLqk4N_9.js` 把它作为 `devCode` 请求头。旧版只读取 Token，另生成设备 ID。0.1.7 一并读取真实 `dc`，将其传递到数据令牌请求的 `did`，重新连接时允许实际浏览器设备替换旧随机 ID。10901 的服务端具体含义仍以实际响应为准；失败提示会区分获取令牌与读取体力，并显示脱敏后的官方说明。
+
+新增模拟测试覆盖 Cookie-only 登录、会话保存恢复、浏览器设备优先级、重新连接替换旧设备和 10901 的步骤及脱敏。Windows 匿名检查改为验证实际 `dc` 读取及当前隐私窗口跨子域的虚构 HttpOnly Cookie；不使用真实账号。真实账号的体力与签到仍须用户复测。
+
+0.1.7 本机静态检查及 57 项测试通过。原生匿名检查也通过了真实 `dc` 与当前隐私窗口 HttpOnly Cookie 的生产读取函数，报告见 [windows-community-login-0.1.7.json](windows-community-login-0.1.7.json)。
 
 ## 范围与登录
 
 | 社区 | 官方登录入口 | 会话读取 |
 | --- | --- | --- |
-| 库街区 | https://www.kurobbs.com/mc/ | 本人完成官方网页登录后，点击连接，读取官方社区 origin 下的 `localStorage.auth_token` |
-| 塔吉多 | https://www.tajiduo.com/bbs/index.html#/home | 本人完成官方 SSO 登录并返回社区后，点击连接，读取 `localStorage.token` |
+| 库街区 | https://www.kurobbs.com/mc/ | 本人完成官方网页登录后，点击连接，读取官方社区 origin 下的 `localStorage.auth_token` 和 `dc` |
+| 塔吉多 | https://www.tajiduo.com/bbs/index.html#/home | 本人完成官方 SSO 登录并返回社区后，点击连接，读取官方 API origin 的 Cookie 和可选 `localStorage.token` |
 
 隐私 WebView 不读取密码输入、短信验证码或登录表单请求。仅允许 HTTPS 官方页面导航，SSO 包括 `id.wanmei.com`。会话获取后读取官方绑定角色，成功后才提交系统安全存储。原有无 `community` 字段的账号按米游社迁移，新社区账号 ID 分别加 `kuro:` 与 `taygedo:` 前缀，防止相同数字 ID 覆盖。
 

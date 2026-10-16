@@ -18,9 +18,18 @@ class TaygedoClient implements CommunityClient {
   static String signature(int timestamp, String nonce) =>
       '$timestamp,$nonce,${md5.convert(utf8.encode('$timestamp$nonce${appVersion}pUds3dfMkl'))}';
   Map<String, String> _headers(Account account, {bool native = false}) => {
-        'authorization': account.cookie,
-        'origin': 'https://webstatic.tajiduo.com',
-        'referer': 'https://webstatic.tajiduo.com/',
+        if (account.recordHeaders['auth-type'] == 'cookie')
+          'cookie': account.cookie
+        else
+          'authorization': account.cookie,
+        if (account.recordHeaders['authorization'] case final String token)
+          'authorization': token,
+        'origin': account.recordHeaders['auth-type'] == 'cookie'
+            ? 'https://www.tajiduo.com'
+            : 'https://webstatic.tajiduo.com',
+        'referer': account.recordHeaders['auth-type'] == 'cookie'
+            ? 'https://www.tajiduo.com/bbs/'
+            : 'https://webstatic.tajiduo.com/',
         if (account.recordHeaders['user-agent'] case final String ua)
           'user-agent': ua,
         if (native) ...{
@@ -34,14 +43,17 @@ class TaygedoClient implements CommunityClient {
       };
   @override
   Future<Account> connect(String input, {String? existingDeviceId}) async {
-    final auth = communityCredential(input);
+    final auth = communityCredential(input, allowCookie: true);
     final device = existingDeviceId ?? newCommunityDeviceId();
     final metadata = {
+      if (auth['cookie'] != null) 'auth-type': 'cookie',
+      if (auth['cookie'] != null && auth['token'] != null)
+        'authorization': auth['token']!,
       if (auth['user-agent'] != null) 'user-agent': auth['user-agent']!
     };
     var account = Account(
         id: '',
-        cookie: auth['token']!,
+        cookie: auth['cookie'] ?? auth['token']!,
         deviceId: device,
         community: Community.taygedo,
         recordHeaders: metadata,
