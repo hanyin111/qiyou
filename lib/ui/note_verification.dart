@@ -6,7 +6,9 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../app_state.dart';
 import '../data/miyoushe_client.dart';
 import '../data/record_verification.dart';
+import '../data/record_browser_session.dart';
 import '../domain/models.dart';
+import 'official_login.dart';
 
 // A local host page for the official GeeTest widget. It contains no account
 // cookies, UID, password, or API client bridge. Proofs are checked by MiYouShe.
@@ -74,7 +76,12 @@ class _NoteVerificationPageState extends State<NoteVerificationPage> {
   RecordVerification? verification;
   String? error;
   String nonce = '';
-  bool loading = false, ready = false, submitting = false, complete = false;
+  bool loading = false,
+      ready = false,
+      submitting = false,
+      complete = false,
+      preparing = false;
+  String progressMessage = '正在初始化官方设备会话…';
   Timer? timeout;
 
   Future<void> start() async {
@@ -82,6 +89,8 @@ class _NoteVerificationPageState extends State<NoteVerificationPage> {
     timeout?.cancel();
     setState(() {
       loading = true;
+      preparing = true;
+      progressMessage = '正在初始化官方设备会话…';
       ready = false;
       error = null;
       verification = null;
@@ -89,21 +98,56 @@ class _NoteVerificationPageState extends State<NoteVerificationPage> {
           .map((b) => b.toRadixString(16).padLeft(2, '0'))
           .join();
     });
+  }
+
+  Future<void> prepare(
+      InAppWebViewController controller, String attempt) async {
+    bool active() => mounted && nonce == attempt;
     try {
+      final account = widget.state.accounts
+          .firstWhere((a) => a.id == widget.entry.accountId);
+      final session = await initializeRecordBrowserSession(
+          controller, RecordBrowserSession.seedCookies(account.cookie),
+          isActive: active);
+      if (!active()) return;
+      await widget.state.installRecordBrowserSession(widget.entry, session);
+      if (!active()) return;
+      setState(() => progressMessage = '正在使用官方设备会话查询便笺…');
+      try {
+        await widget.state.refreshNote(widget.entry);
+        if (active()) setState(() => complete = true);
+        return;
+      } on MiyousheException catch (failure) {
+        if (failure.kind != ApiFailure.verification) rethrow;
+      }
+      if (!active()) return;
+      setState(() => progressMessage = '正在获取验证码…');
       final value = await widget.state.createNoteVerification(widget.entry);
-      if (!mounted) return;
-      setState(() => verification = value);
+      if (!active()) return;
+      controller.addJavaScriptHandler(
+          handlerName: 'qiyouCaptcha',
+          callback: (args) => handleCaptcha(args, attempt));
+      setState(() {
+        verification = value;
+        preparing = false;
+      });
+      await controller.loadData(data: noteVerificationHtml(value, nonce));
       timeout = Timer(const Duration(seconds: 35), () {
         if (mounted && !ready && !submitting && !complete) {
           setState(() => error = '验证码加载超时，请检查网络后重新加载。');
         }
       });
     } on MiyousheException catch (failure) {
-      if (mounted) setState(() => error = failure.message);
+      if (active()) setState(() => error = failure.message);
     } catch (_) {
-      if (mounted) setState(() => error = '未能获取验证码，请稍后重试。');
+      if (active()) setState(() => error = '未能初始化验证会话，请稍后重试。');
     } finally {
-      if (mounted) setState(() => loading = false);
+      if (active()) {
+        setState(() {
+          loading = false;
+          preparing = false;
+        });
+      }
     }
   }
 
@@ -174,41 +218,51 @@ class _NoteVerificationPageState extends State<NoteVerificationPage> {
                                 Text(
                                     complete
                                         ? '已从米游社读取最新便笺，可以返回游戏页。'
-                                        : '验证码由极验提供，加载后会处理设备与网络信息以识别人机行为。请手动完成验证，栖游随后向米游社确认并重新查询体力。',
+                                        : '先由米游社官方网页初始化设备会话，必要时显示极验验证码。两者会处理设备与网络信息以识别人机行为；账号凭证不会提供给验证码页面。',
                                     textAlign: TextAlign.center),
-                                if (verification != null &&
+                                if ((preparing || verification != null) &&
                                     !complete &&
                                     error == null)
                                   SizedBox(
                                       height: 440,
-                                      child: InAppWebView(
-                                        key: ValueKey(nonce),
-                                        initialData: InAppWebViewInitialData(
-                                            data: noteVerificationHtml(
-                                                verification!, nonce)),
-                                        initialSettings: InAppWebViewSettings(
-                                            incognito: true,
-                                            isInspectable: false,
-                                            useShouldOverrideUrlLoading: true,
-                                            allowFileAccess: false,
-                                            allowContentAccess: false,
-                                            saveFormData: false),
-                                        onWebViewCreated: (controller) {
-                                          final attempt = nonce;
-                                          controller.addJavaScriptHandler(
-                                              handlerName: 'qiyouCaptcha',
-                                              callback: (args) =>
-                                                  handleCaptcha(args, attempt));
-                                        },
-                                        shouldOverrideUrlLoading: (_,
-                                                action) async =>
-                                            action.isForMainFrame &&
-                                                    action.request.url
-                                                            ?.toString() !=
-                                                        'about:blank'
-                                                ? NavigationActionPolicy.CANCEL
-                                                : NavigationActionPolicy.ALLOW,
-                                      )),
+                                      child: IgnorePointer(
+                                          ignoring: preparing,
+                                          child: Opacity(
+                                              opacity: preparing ? 0 : 1,
+                                              child: InAppWebView(
+                                                key: ValueKey(nonce),
+                                                initialData:
+                                                    InAppWebViewInitialData(
+                                                        data: '<html></html>'),
+                                                initialSettings:
+                                                    InAppWebViewSettings(
+                                                        incognito: true,
+                                                        isInspectable: false,
+                                                        useShouldOverrideUrlLoading:
+                                                            true,
+                                                        allowFileAccess: false,
+                                                        allowContentAccess:
+                                                            false,
+                                                        saveFormData: false),
+                                                onWebViewCreated:
+                                                    (controller) => prepare(
+                                                        controller, nonce),
+                                                shouldOverrideUrlLoading: (_,
+                                                        action) async =>
+                                                    action.isForMainFrame &&
+                                                            action.request.url
+                                                                    ?.toString() !=
+                                                                'about:blank' &&
+                                                            !(preparing &&
+                                                                isOfficialLoginUrl(
+                                                                    action
+                                                                        .request
+                                                                        .url))
+                                                        ? NavigationActionPolicy
+                                                            .CANCEL
+                                                        : NavigationActionPolicy
+                                                            .ALLOW,
+                                              )))),
                                 if (loading ||
                                     (verification != null &&
                                         !ready &&
@@ -219,7 +273,9 @@ class _NoteVerificationPageState extends State<NoteVerificationPage> {
                                   const SizedBox(height: 12),
                                   Text(submitting
                                       ? '正在确认验证结果并查询体力…'
-                                      : '正在加载验证码…'),
+                                      : loading
+                                          ? progressMessage
+                                          : '正在加载验证码…'),
                                 ],
                                 if (error != null) ...[
                                   const SizedBox(height: 20),
@@ -241,6 +297,6 @@ class _NoteVerificationPageState extends State<NoteVerificationPage> {
                                   FilledButton(
                                       onPressed: start,
                                       child: Text(
-                                          error == null ? '加载验证码' : '重新加载')),
+                                          error == null ? '开始验证' : '重新加载')),
                               ])))))));
 }

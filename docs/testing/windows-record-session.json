@@ -1,0 +1,9 @@
+{
+  "version": "0.1.5",
+  "passed": true,
+  "official_fp_received": true,
+  "official_device_id_received": true,
+  "browser_user_agent_received": true,
+  "uses_user_account": false,
+  "scope": "The production official-browser bootstrap function was exercised in a native Windows WebView. Real account CAPTCHA acceptance and note retrieval remain unverified."
+}

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'data/device_bridge.dart';
 import 'data/miyoushe_client.dart';
 import 'data/record_verification.dart';
+import 'data/record_browser_session.dart';
 import 'domain/models.dart';
 
 class AppState extends ChangeNotifier {
@@ -335,6 +336,35 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     try {
       return await client.createNoteVerification(account, entry.role);
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> installRecordBrowserSession(
+      GameEntry entry, RecordBrowserSession session) async {
+    final previous = _noteAccount(entry);
+    final cookies = MiyousheClient.parseCookie(previous.cookie)
+      ..addAll(session.cookies);
+    final updated = [...accounts];
+    final index = updated.indexWhere((a) => a.id == previous.id);
+    updated[index] = Account(
+        id: previous.id,
+        cookie: cookies.entries.map((e) => '${e.key}=${e.value}').join('; '),
+        deviceId: session.deviceId,
+        roles: previous.roles,
+        recordHeaders: {
+          ...previous.recordHeaders,
+          'x-rpc-device_id': session.deviceId,
+          'x-rpc-device_fp': session.fingerprint,
+          'user-agent': session.userAgent
+        });
+    busy = true;
+    notifyListeners();
+    try {
+      await _persist(accountOverride: updated);
+      accounts = updated;
     } finally {
       busy = false;
       notifyListeners();

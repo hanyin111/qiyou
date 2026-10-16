@@ -42,10 +42,15 @@ void main() {
                   body: request.body));
           if (stage++ == 0) {
             return response({},
-                retcode: 1034, headers: {'x-trace-id': 'failed-note-trace'});
+                retcode: 1034,
+                headers: {
+                  'x-trace-id': 'failed-note-trace',
+                  'set-cookie': 'acw_tc=continuity; Path=/'
+                });
           }
           if (request.url.path.endsWith('/createVerification')) {
             expect(request.url.query, 'is_high=true');
+            expect(request.headers['Cookie'], contains('acw_tc=continuity'));
             expect(request.url.path, endsWith('/createVerification'));
             expect(request.headers['x-rpc-challenge_path'],
                 'https://api-takumi-record.mihoyo.com/game_record/app/genshin/api/dailyNote');
@@ -59,6 +64,7 @@ void main() {
           }
           if (request.method == 'POST') {
             expect(request.url.path, endsWith('/verifyVerification'));
+            expect(request.headers['Cookie'], contains('acw_tc=continuity'));
             expect(
                 request.headers['x-rpc-challenge_trace'], 'failed-note-trace');
             expect(request.headers['x-rpc-challenge_path'],

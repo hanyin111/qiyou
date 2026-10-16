@@ -5,6 +5,8 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import '../domain/models.dart';
 import 'record_verification.dart';
+import 'record_session_cookies.dart';
+import 'verification_diagnostics.dart';
 
 enum ApiFailure { credentials, expired, verification, network, protocol }
 
@@ -53,6 +55,7 @@ class MiyousheClient {
   final Random _random = Random.secure();
   final _recordPasses = <String, ({String challenge, DateTime expires})>{};
   final _recordTraces = <String, ({String value, DateTime receivedAt})>{};
+  final _recordCookies = RecordSessionCookies();
   static const hosts = {
     'api-takumi.mihoyo.com',
     'api-takumi-record.mihoyo.com',
@@ -350,7 +353,10 @@ class MiyousheClient {
       ..followRedirects = false
       ..headers.addAll({
         'Accept': 'application/json',
-        'Cookie': account.cookie,
+        'Cookie': record
+            ? _recordCookies.header(
+                account.cookie, account.id, account.deviceId, host, _clock())
+            : account.cookie,
         'x-rpc-app_version': MiyousheProtocol.appVersion,
         'x-rpc-client_type': '5',
         'x-rpc-device_id': account.deviceId,
@@ -391,6 +397,10 @@ class MiyousheClient {
     try {
       final response = await (() async {
         final stream = await _http.send(request);
+        if (record) {
+          _recordCookies.remember(account.id, account.deviceId, host,
+              stream.headers['set-cookie'], _clock());
+        }
         onResponseHeaders?.call(stream.headers);
         if (stream.statusCode != 200) {
           throw const MiyousheException(ApiFailure.network, '米游社暂时没有响应，请稍后重试。');
@@ -408,6 +418,34 @@ class MiyousheClient {
       final json = object(response);
       final code = number(json['retcode']);
       final data = object(json['data']);
+      var officialReason = '';
+      if (stage == ApiStage.verificationConfirm ||
+          stage == ApiStage.verificationCreate) {
+        officialReason = safeVerificationReason(json['message'], [
+          account.cookie,
+          account.id,
+          account.deviceId,
+          ...account.cookie.split(';').map((c) =>
+              c.contains('=') ? c.substring(c.indexOf('=') + 1).trim() : ''),
+          ...account.recordHeaders.values,
+          ...params.values,
+          ...?body?.values.whereType<String>()
+        ]);
+        await writeVerificationDiagnostic({
+          'version': '0.1.5',
+          'stage': stage!.name,
+          'game': recordGame?.name,
+          'retcode': code,
+          'official_reason': officialReason,
+          'has_device_fp':
+              request.headers['x-rpc-device_fp']?.isNotEmpty == true,
+          'has_trace':
+              request.headers['x-rpc-challenge_trace']?.isNotEmpty == true,
+          'has_temporary_session':
+              request.headers['Cookie']?.contains('acw_tc=') == true,
+          'proof_fields': body?.keys.toList(),
+        });
+      }
       if (code == -5003 &&
           body != null &&
           game != null &&
@@ -427,7 +465,7 @@ class MiyousheClient {
         throw MiyousheException(
             ApiFailure.verification,
             stage == ApiStage.verificationConfirm
-                ? '米游社未接受本次验证码（错误码 $code），请重新加载后手动验证。'
+                ? '米游社未接受本次验证码（错误码 $code），请重新加载后手动验证。${officialReason.isEmpty ? '' : '\n官方提示：$officialReason'}'
                 : '米游社要求安全验证（$code）。请点击“完成安全验证”后重试。',
             code: code);
       }
