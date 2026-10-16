@@ -253,19 +253,21 @@ class AppState extends ChangeNotifier {
         for (final entry in visibleEntries) {
           final account =
               accounts.firstWhere((account) => account.id == entry.accountId);
-          final errors = <String>[];
+          entry.noteError = null;
+          entry.signError = null;
+          entry.noteNeedsVerification = false;
           try {
             entry.note = await client.daily(account, entry.role);
           } on MiyousheException catch (error) {
-            errors.add(error.message);
+            entry.noteError = error.message;
+            entry.noteNeedsVerification = error.kind == ApiFailure.verification;
           }
           try {
             entry.signStatus = await client.signInfo(account, entry.role);
           } on MiyousheException catch (error) {
             entry.signStatus = _status(error);
-            errors.add(error.message);
+            entry.signError = error.message;
           }
-          entry.error = errors.isEmpty ? null : errors.toSet().join(' ');
           notifyListeners();
         }
         final failures =
@@ -295,16 +297,16 @@ class AppState extends ChangeNotifier {
         if (demo) {
           await Future<void>.delayed(const Duration(milliseconds: 350));
           entry.signStatus = SignStatus.signed;
-          entry.error = null;
+          entry.signError = null;
         } else {
           try {
             final account =
                 accounts.firstWhere((account) => account.id == entry.accountId);
             entry.signStatus = await client.sign(account, entry.role);
-            entry.error = null;
+            entry.signError = null;
           } on MiyousheException catch (error) {
             entry.signStatus = _status(error);
-            entry.error = error.message;
+            entry.signError = error.message;
           }
         }
         if (entry.signStatus.isDone) done++;
@@ -317,6 +319,37 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     }
     return demo ? '演示签到完成 · 未发送真实请求' : '已完成 $done / ${pending.length} 个角色的签到';
+  }
+
+  Future<void> acceptOfficialNote(GameEntry entry, Map<String, dynamic> data,
+      Map<String, String> headers) async {
+    if (demo || busy || !entries.contains(entry)) return;
+    final note = DailyNote.parse(entry.role.game, data, DateTime.now());
+    if (note.energy == null || note.capacity == null || note.capacity! <= 0) {
+      throw const MiyousheException(ApiFailure.protocol, '官方便笺返回的数据不完整。');
+    }
+    final index =
+        accounts.indexWhere((account) => account.id == entry.accountId);
+    if (index < 0) return;
+    final previous = accounts[index];
+    final updated = [...accounts];
+    updated[index] = Account(
+        id: previous.id,
+        cookie: previous.cookie,
+        deviceId: previous.deviceId,
+        roles: previous.roles,
+        recordHeaders: {
+          ...previous.recordHeaders,
+          ...MiyousheClient.safeRecordHeaders(headers)
+        });
+    await _persist(accountOverride: updated);
+    accounts = updated;
+    entry.note = note;
+    entry.noteError = null;
+    entry.noteNeedsVerification = false;
+    lastRefresh = DateTime.now();
+    _record('${entry.role.game.shortTitle} · 已从官方工具同步便笺');
+    notifyListeners();
   }
 
   SignStatus _status(MiyousheException error) => switch (error.kind) {

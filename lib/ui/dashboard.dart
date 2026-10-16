@@ -3,6 +3,8 @@ import '../app_state.dart';
 import '../domain/models.dart';
 import 'design.dart';
 import 'dialogs.dart';
+import 'official_login.dart';
+import 'official_record.dart';
 
 class Overview extends StatelessWidget {
   const Overview(
@@ -231,7 +233,14 @@ class GameCard extends StatelessWidget {
             SizedBox(height: 12),
             Text(entry.error!,
                 style: TextStyle(
-                    fontSize: 11, color: context.palette.error, height: 1.7))
+                    fontSize: 11, color: context.palette.error, height: 1.7)),
+            if (!state.demo && supportsOfficialLogin && entry.noteError != null)
+              TextButton(
+                  onPressed: state.busy
+                      ? null
+                      : () => openOfficialRecord(context, state, entry),
+                  child: Text(
+                      entry.noteNeedsVerification ? '打开官方工具验证' : '在官方工具中检查便笺')),
           ],
         ]));
   }

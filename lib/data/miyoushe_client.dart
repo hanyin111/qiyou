@@ -131,7 +131,7 @@ class MiyousheClient {
     final path = switch (role.game) {
       Game.genshin => '/game_record/app/genshin/api/dailyNote',
       Game.starRail => '/game_record/app/hkrpg/api/note',
-      Game.zenless => '/game_record/app/zzz/api/note',
+      Game.zenless => '/event/game_record_zzz/api/zzz/note',
     };
     final data = await _request(account, 'api-takumi-record.mihoyo.com', path,
         params: {'role_id': role.uid, 'server': role.region}, record: true);
@@ -209,8 +209,12 @@ class MiyousheClient {
         'x-rpc-client_type': '5',
         'x-rpc-device_id': account.deviceId,
         'x-rpc-channel': 'miyousheluodi',
-        'Referer': 'https://act.mihoyo.com/',
-        'Origin': 'https://act.mihoyo.com',
+        'Referer': record && !path.contains('game_record_zzz')
+            ? 'https://webstatic.mihoyo.com/'
+            : 'https://act.mihoyo.com/',
+        'Origin': record && !path.contains('game_record_zzz')
+            ? 'https://webstatic.mihoyo.com'
+            : 'https://act.mihoyo.com',
         'User-Agent': 'Mozilla/5.0 miHoYoBBS/${MiyousheProtocol.appVersion}',
         if (game != null) 'x-rpc-signgame': game.signGame,
         'DS': MiyousheProtocol.signature(
@@ -218,6 +222,9 @@ class MiyousheClient {
             nonce: nonce,
             query: record ? uri.query : null)
       });
+    if (record) {
+      request.headers.addAll(safeRecordHeaders(account.recordHeaders));
+    }
     if (body != null) {
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode(body);
@@ -246,12 +253,12 @@ class MiyousheClient {
         throw const MiyousheException(ApiFailure.expired, '登录已过期，请重新连接米游社账号。');
       }
       final risk = number(data['risk_code']);
-      if ({1034, 5003, -999}.contains(code) ||
+      if ({1034, 5003, 10035, 10041, -999}.contains(code) ||
           (risk != null && risk != 0) ||
           (data['gt']?.toString().isNotEmpty ?? false) ||
           (data['challenge']?.toString().isNotEmpty ?? false)) {
-        throw const MiyousheException(
-            ApiFailure.verification, '需要在米游社完成安全验证。完成后再回到栖游重试。');
+        throw MiyousheException(
+            ApiFailure.verification, '米游社要求安全验证（$code）。请打开官方工具完成验证后重试。');
       }
       if (code != 0) {
         throw MiyousheException(ApiFailure.protocol,
@@ -267,6 +274,28 @@ class MiyousheClient {
     } catch (_) {
       throw const MiyousheException(ApiFailure.network, '连接未完成，请检查网络后重试。');
     }
+  }
+
+  static Map<String, String> safeRecordHeaders(Map<String, String> headers) {
+    const allowed = {
+      'x-rpc-device_id',
+      'x-rpc-device_fp',
+      'x-rpc-client_type',
+      'x-rpc-app_version',
+      'x-rpc-page',
+      'x-rpc-tool-verison',
+      'x-rpc-challenge_game',
+      'user-agent',
+      'referer',
+      'origin'
+    };
+    return {
+      for (final entry in headers.entries)
+        if (allowed.contains(entry.key.toLowerCase()) &&
+            entry.value.length <= 2048 &&
+            !RegExp(r'[\r\n\x00]').hasMatch(entry.value))
+          entry.key.toLowerCase(): entry.value
+    };
   }
 
   void close() => _http.close();

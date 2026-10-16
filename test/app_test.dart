@@ -17,7 +17,32 @@ class NoNetworkClient extends MiyousheClient {
       throw StateError('Demo must never use the network');
 }
 
+class SuccessfulSignClient extends MiyousheClient {
+  @override
+  Future<SignStatus> sign(Account account, Role role) async =>
+      SignStatus.signed;
+}
+
 void main() {
+  test('Signing preserves an unrelated daily-note verification error',
+      () async {
+    final state =
+        AppState(client: SuccessfulSignClient(), bridge: DemoBridge());
+    addTearDown(state.dispose);
+    final entry = state.entries.first;
+    state.demo = false;
+    state.accounts.add(Account(
+        id: entry.accountId,
+        cookie: 'test',
+        deviceId: 'test',
+        roles: [entry.role]));
+    entry.noteError = 'Daily note needs verification';
+    entry.noteNeedsVerification = true;
+    await state.signAll(only: entry);
+    expect(entry.signStatus, SignStatus.signed);
+    expect(entry.error, 'Daily note needs verification');
+    expect(entry.noteNeedsVerification, isTrue);
+  });
   test('Demo sign never touches real client and does not sign twice', () async {
     final state = AppState(client: NoNetworkClient(), bridge: DemoBridge());
     addTearDown(state.dispose);

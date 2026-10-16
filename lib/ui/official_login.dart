@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../app_state.dart';
 import '../data/miyoushe_client.dart';
+import '../data/login_session.dart';
 import 'design.dart';
 
 bool get supportsOfficialLogin =>
@@ -37,7 +38,7 @@ class _OfficialLoginPageState extends State<OfficialLoginPage> {
       error = null;
     });
     try {
-      final values = <String, String>{};
+      final session = await readSessionCookies(controller!);
       const allowed = {
         'account_id',
         'account_id_v2',
@@ -51,17 +52,8 @@ class _OfficialLoginPageState extends State<OfficialLoginPage> {
         'ltmid_v2',
         'mi18nLang'
       };
-      for (final url in [
-        'https://user.mihoyo.com/',
-        'https://www.miyoushe.com/',
-        'https://m.miyoushe.com/',
-      ]) {
-        final cookies = await CookieManager.instance()
-            .getCookies(url: WebUri(url), webViewController: controller);
-        for (final cookie in cookies) {
-          if (allowed.contains(cookie.name)) values[cookie.name] = cookie.value;
-        }
-      }
+      final values = Map<String, String>.fromEntries(
+          session.entries.where((entry) => allowed.contains(entry.key)));
       final cookie =
           values.entries.map((e) => '${e.key}=${e.value}').join('; ');
       if (values.isEmpty) {

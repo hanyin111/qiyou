@@ -134,6 +134,49 @@ void main() {
             .having((error) => error.message, 'message',
                 isNot(contains('do-not-display')))));
   });
+  test('Zenless note uses its event API and official record origin', () async {
+    final client = MiyousheClient(transport: MockClient((request) async {
+      expect(request.url.path, '/event/game_record_zzz/api/zzz/note');
+      expect(request.headers['origin'], 'https://act.mihoyo.com');
+      return response({
+        'energy': {
+          'progress': {'current': 50, 'max': 240},
+          'restore': 1000
+        }
+      });
+    }));
+    addTearDown(client.close);
+    final zzz = Role(
+        game: Game.zenless,
+        uid: '1',
+        region: 'prod_gf_cn',
+        nickname: 'Test',
+        serverName: 'Test');
+    expect((await client.daily(account, zzz)).energy, 50);
+  });
+  test('Record account-risk codes request human verification', () async {
+    for (final code in [1034, 10035, 10041]) {
+      final client = MiyousheClient(
+          transport: MockClient((_) async => response({}, retcode: code)));
+      await expectLater(
+          client.daily(account, role),
+          throwsA(isA<MiyousheException>()
+              .having((e) => e.kind, 'kind', ApiFailure.verification)));
+      client.close();
+    }
+  });
+  test('Captured record metadata cannot replace Cookie, DS or inject headers',
+      () {
+    expect(
+        MiyousheClient.safeRecordHeaders({
+          'Cookie': 'do-not-copy',
+          'DS': 'expired-signature',
+          'Authorization': 'no',
+          'x-rpc-device_fp': 'official-fp',
+          'x-rpc-device_id': 'device\r\nHost: evil',
+        }),
+        {'x-rpc-device_fp': 'official-fp'});
+  });
   test('Uncertain POST failure is not retried automatically', () async {
     var writes = 0;
     final client = MiyousheClient(transport: MockClient((request) async {

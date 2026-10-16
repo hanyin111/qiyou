@@ -86,20 +86,25 @@ class Account {
       {required this.id,
       required this.cookie,
       required this.deviceId,
-      required this.roles});
+      required this.roles,
+      this.recordHeaders = const {}});
   final String id, cookie, deviceId;
   final List<Role> roles;
+  final Map<String, String> recordHeaders;
   String get title => roles.isEmpty ? '米游社账号' : roles.first.nickname;
   Map<String, dynamic> toJson() => {
         'id': id,
         'cookie': cookie,
         'deviceId': deviceId,
+        'recordHeaders': recordHeaders,
         'roles': roles.map((role) => role.toJson()).toList()
       };
   factory Account.fromJson(Map<String, dynamic> json) => Account(
       id: json['id'] as String,
       cookie: json['cookie'] as String,
       deviceId: json['deviceId'] as String,
+      recordHeaders: object(json['recordHeaders'])
+          .map((key, value) => MapEntry(key, '$value')),
       roles: (json['roles'] as List)
           .map((value) => Role.fromJson(object(value)))
           .toList());
@@ -231,12 +236,19 @@ class GameEntry {
       required this.accountId,
       this.note,
       this.signStatus = SignStatus.unknown,
-      this.error});
+      this.noteError,
+      this.signError});
   final Role role;
   final String accountId;
   DailyNote? note;
   SignStatus signStatus;
-  String? error;
+  String? noteError, signError;
+  bool noteNeedsVerification = false;
+  String? get error {
+    final errors = [noteError, signError].whereType<String>().toSet();
+    return errors.isEmpty ? null : errors.join(' ');
+  }
+
   String get key => '$accountId:${role.key}';
 }
 
