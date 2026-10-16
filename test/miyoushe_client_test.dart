@@ -17,8 +17,10 @@ const account = Account(
     cookie: 'account_id=1; cookie_token=test-only',
     deviceId: 'device',
     roles: [role]);
-http.Response response(Map<String, dynamic> data, {int retcode = 0}) =>
-    http.Response(jsonEncode({'retcode': retcode, 'data': data}), 200);
+http.Response response(Map<String, dynamic> data,
+        {int retcode = 0, Map<String, String> headers = const {}}) =>
+    http.Response(jsonEncode({'retcode': retcode, 'data': data}), 200,
+        headers: headers);
 
 void main() {
   test('Manual verification signs the exact body and scopes its read retry',
@@ -39,28 +41,45 @@ void main() {
                   query: request.url.query,
                   body: request.body));
           if (stage++ == 0) {
-            expect(request.url.query, 'is_high=false');
+            return response({},
+                retcode: 1034, headers: {'x-trace-id': 'failed-note-trace'});
+          }
+          if (request.url.path.endsWith('/createVerification')) {
+            expect(request.url.query, 'is_high=true');
             expect(request.url.path, endsWith('/createVerification'));
-            return response(
-                {'gt': 'test-gt', 'challenge': 'initial-challenge'});
+            expect(request.headers['x-rpc-challenge_path'],
+                'https://api-takumi-record.mihoyo.com/game_record/app/genshin/api/dailyNote');
+            expect(
+                request.headers['x-rpc-challenge_trace'], 'failed-note-trace');
+            return response({
+              'gt': 'test-gt',
+              'challenge': 'initial-challenge',
+              'success': 1
+            });
           }
           if (request.method == 'POST') {
             expect(request.url.path, endsWith('/verifyVerification'));
+            expect(
+                request.headers['x-rpc-challenge_trace'], 'failed-note-trace');
+            expect(request.headers['x-rpc-challenge_path'],
+                'https://api-takumi-record.mihoyo.com/game_record/app/genshin/api/dailyNote');
             expect(jsonDecode(request.body), {
               'geetest_challenge': 'solved-challenge',
               'geetest_validate': 'human-proof',
               'geetest_seccode': 'human-proof|jordan'
             });
-            return response({});
+            return response({'challenge': 'server-issued.pass/=='});
           }
           expect(
               request.headers['x-rpc-challenge'],
-              request.url.queryParameters['role_id'] == role.uid && stage == 3
-                  ? 'solved-challenge'
+              request.url.queryParameters['role_id'] == role.uid && stage == 4
+                  ? 'server-issued.pass/=='
                   : isNull);
           return response({'current_resin': 100, 'max_resin': 200});
         }));
     addTearDown(client.close);
+    await expectLater(
+        client.daily(account, role), throwsA(isA<MiyousheException>()));
     final challenge = await client.createNoteVerification(account, role);
     await client.verifyNote(
         account,
@@ -76,6 +95,7 @@ void main() {
         nickname: 'Other',
         serverName: 'Test');
     await client.daily(account, other);
+    await client.daily(account, role); // A pass is consumed by one read only.
     at = at.add(const Duration(minutes: 5));
     await client.daily(account, role);
   });
@@ -97,6 +117,8 @@ void main() {
         accountId: account.id,
         deviceId: account.deviceId,
         roleKey: role.key,
+        requestPath:
+            'https://api-takumi-record.mihoyo.com/game_record/app/genshin/api/dailyNote',
         issuedAt: issued);
     const proof = RecordVerificationProof('challenge', 'proof', 'proof|jordan');
     await expectLater(
@@ -108,6 +130,90 @@ void main() {
         throwsA(isA<MiyousheException>()));
     await client.daily(account, role);
     expect(requests, 2);
+  });
+  test(
+      'Verification errors identify creation or confirmation without leaking payloads',
+      () async {
+    final client = MiyousheClient(
+        transport: MockClient((request) async => response(
+            {'secret': 'never-display'},
+            retcode: request.method == 'POST' ? 10306 : -1)));
+    addTearDown(client.close);
+    await expectLater(
+        client.createNoteVerification(account, role),
+        throwsA(isA<MiyousheException>()
+            .having((e) => e.stage, 'stage', ApiStage.verificationCreate)
+            .having((e) => e.code, 'code', -1)
+            .having((e) => e.message, 'message', startsWith('获取验证码：'))));
+    final ticket = RecordVerification(
+        gt: 'test',
+        challenge: 'test',
+        accountId: account.id,
+        deviceId: account.deviceId,
+        roleKey: role.key,
+        requestPath:
+            'https://api-takumi-record.mihoyo.com/game_record/app/genshin/api/dailyNote',
+        issuedAt: DateTime.now());
+    await expectLater(
+        client.verifyNote(account, role, ticket,
+            const RecordVerificationProof('test', 'test', 'test|jordan')),
+        throwsA(isA<MiyousheException>()
+            .having((e) => e.stage, 'stage', ApiStage.verificationConfirm)
+            .having((e) => e.code, 'code', 10306)
+            .having((e) => e.message, 'message', startsWith('确认验证码：'))
+            .having((e) => e.message, 'message',
+                isNot(contains('never-display')))));
+  });
+  test(
+      'Empty official retry credential never falls back to the raw CAPTCHA challenge',
+      () async {
+    final client = MiyousheClient(transport: MockClient((request) async {
+      if (request.method == 'POST') return response({});
+      expect(request.headers['x-rpc-challenge'], isNull);
+      return response({'current_resin': 50, 'max_resin': 200});
+    }));
+    addTearDown(client.close);
+    final ticket = RecordVerification(
+        gt: 'test',
+        challenge: 'test',
+        accountId: account.id,
+        deviceId: account.deviceId,
+        roleKey: role.key,
+        requestPath:
+            'https://api-takumi-record.mihoyo.com/game_record/app/genshin/api/dailyNote',
+        issuedAt: DateTime.now());
+    await expectLater(
+        client.verifyNote(account, role, ticket,
+            const RecordVerificationProof('test', 'test', 'test|jordan')),
+        throwsA(isA<MiyousheException>()));
+    await client.daily(account, role);
+  });
+  test('An unused official retry credential expires after five minutes',
+      () async {
+    var at = DateTime.utc(2026, 10, 16);
+    final client = MiyousheClient(
+        clock: () => at,
+        transport: MockClient((request) async {
+          if (request.method == 'POST') {
+            return response({'challenge': 'server-pass'});
+          }
+          expect(request.headers['x-rpc-challenge'], isNull);
+          return response({'current_resin': 50, 'max_resin': 200});
+        }));
+    addTearDown(client.close);
+    final ticket = RecordVerification(
+        gt: 'test',
+        challenge: 'test',
+        accountId: account.id,
+        deviceId: account.deviceId,
+        roleKey: role.key,
+        requestPath:
+            'https://api-takumi-record.mihoyo.com/game_record/app/genshin/api/dailyNote',
+        issuedAt: at);
+    await client.verifyNote(account, role, ticket,
+        const RecordVerificationProof('test', 'test', 'test|jordan'));
+    at = at.add(const Duration(minutes: 5));
+    await client.daily(account, role);
   });
   test(
       'Cookie import accepts token values containing equals and masks debug output',

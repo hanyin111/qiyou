@@ -266,7 +266,7 @@ class SettingsPage extends StatelessWidget {
           Brand(compact: true),
           Spacer(),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('0.1.3',
+            Text('0.1.4',
                 style: TextStyle(
                     fontSize: 10,
                     letterSpacing: 1,

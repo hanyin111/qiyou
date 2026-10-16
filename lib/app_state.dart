@@ -365,11 +365,15 @@ class AppState extends ChangeNotifier {
       _record('${entry.role.game.shortTitle} · 便笺已同步');
     } on MiyousheException catch (error) {
       final failure = verified && error.kind == ApiFailure.verification
-          ? const MiyousheException(ApiFailure.verification,
-              '米游社已确认验证码，但仍限制便笺查询。请稍后重试；若持续出现，可能还需要在米游社 App 处理账号验证。')
+          ? MiyousheException(ApiFailure.verification,
+              '米游社已确认验证码，但便笺查询仍受限制（错误码 ${error.code ?? '未知'}）。请稍后重试；若持续出现，可能还需要在米游社 App 处理账号验证。',
+              code: error.code, stage: error.stage)
           : error;
       entry.noteError = failure.message;
-      entry.noteNeedsVerification = failure.kind == ApiFailure.verification;
+      entry.noteNeedsVerification = failure.kind == ApiFailure.verification ||
+          (verification != null &&
+              !verified &&
+              failure.kind != ApiFailure.expired);
       throw failure;
     } finally {
       busy = false;

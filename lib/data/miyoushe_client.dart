@@ -8,10 +8,21 @@ import 'record_verification.dart';
 
 enum ApiFailure { credentials, expired, verification, network, protocol }
 
+enum ApiStage {
+  note('便笺查询'),
+  verificationCreate('获取验证码'),
+  verificationConfirm('确认验证码');
+
+  const ApiStage(this.label);
+  final String label;
+}
+
 class MiyousheException implements Exception {
-  const MiyousheException(this.kind, this.message);
+  const MiyousheException(this.kind, this.message, {this.code, this.stage});
   final ApiFailure kind;
   final String message;
+  final int? code;
+  final ApiStage? stage;
   @override
   String toString() => message;
 }
@@ -41,6 +52,7 @@ class MiyousheClient {
   final DateTime Function() _clock;
   final Random _random = Random.secure();
   final _recordPasses = <String, ({String challenge, DateTime expires})>{};
+  final _recordTraces = <String, ({String value, DateTime receivedAt})>{};
   static const hosts = {
     'api-takumi.mihoyo.com',
     'api-takumi-record.mihoyo.com',
@@ -130,31 +142,36 @@ class MiyousheClient {
   }
 
   Future<DailyNote> daily(Account account, Role role) async {
-    final path = switch (role.game) {
-      Game.genshin => '/game_record/app/genshin/api/dailyNote',
-      Game.starRail => '/game_record/app/hkrpg/api/note',
-      Game.zenless => '/event/game_record_zzz/api/zzz/note',
-    };
+    final path = _notePath(role.game);
     final key = _passKey(account, role);
-    final pass = _recordPasses[key];
-    if (pass != null && !_clock().isBefore(pass.expires)) {
-      _recordPasses.remove(key);
-    }
+    // The official retry credential is consumed by the next read only.
+    final pass = _recordPasses.remove(key);
+    _recordTraces.remove(key);
     try {
       final data = await _request(account, 'api-takumi-record.mihoyo.com', path,
           params: {'role_id': role.uid, 'server': role.region},
           record: true,
           recordGame: role.game,
-          verifiedChallenge: _recordPasses[key]?.challenge);
+          stage: ApiStage.note, onResponseHeaders: (headers) {
+        final trace = headers['x-trace-id'];
+        if (RecordVerification.validTrace(trace)) {
+          _recordTraces[key] = (value: trace!, receivedAt: _clock());
+        }
+      },
+          verifiedChallenge: pass != null && _clock().isBefore(pass.expires)
+              ? pass.challenge
+              : null);
       return DailyNote.parse(role.game, data, _clock());
-    } on MiyousheException catch (error) {
-      if (error.kind == ApiFailure.verification ||
-          error.kind == ApiFailure.expired) {
-        _recordPasses.remove(key);
-      }
+    } on MiyousheException {
       rethrow;
     }
   }
+
+  static String _notePath(Game game) => switch (game) {
+        Game.genshin => '/game_record/app/genshin/api/dailyNote',
+        Game.starRail => '/game_record/app/hkrpg/api/note',
+        Game.zenless => '/event/game_record_zzz/api/zzz/note',
+      };
 
   String _passKey(Account account, Role role) =>
       '${account.id}:${account.deviceId}:${role.key}';
@@ -162,16 +179,33 @@ class MiyousheClient {
   Future<RecordVerification> createNoteVerification(
       Account account, Role role) async {
     _recordPasses.remove(_passKey(account, role));
+    final trace = _recordTraces[_passKey(account, role)];
+    final traceId = trace != null &&
+            _clock().difference(trace.receivedAt) < const Duration(minutes: 5)
+        ? trace.value
+        : '';
+    final requestPath =
+        Uri.https('api-takumi-record.mihoyo.com', _notePath(role.game))
+            .toString();
     final data = await _request(account, 'api-takumi-record.mihoyo.com',
         '/game_record/app/card/wapi/createVerification',
-        params: {'is_high': 'false'},
+        params: {'is_high': 'true'},
         record: true,
         recordGame: role.game,
+        stage: ApiStage.verificationCreate,
+        challengePath: requestPath,
+        challengeTrace: traceId,
         expectChallenge: true);
     if (!RecordVerification.validToken(data['gt']) ||
         !RecordVerification.validToken(data['challenge'])) {
       throw const MiyousheException(
-          ApiFailure.protocol, '米游社没有返回可用的验证码，请稍后重试。');
+          ApiFailure.protocol, '获取验证码：米游社没有返回可用的验证码，请稍后重试。',
+          stage: ApiStage.verificationCreate);
+    }
+    if (data['success'] != true && number(data['success']) != 1) {
+      throw const MiyousheException(
+          ApiFailure.verification, '获取验证码：极验服务暂不可用，请稍后重试。',
+          stage: ApiStage.verificationCreate);
     }
     return RecordVerification(
         gt: data['gt'] as String,
@@ -180,6 +214,8 @@ class MiyousheClient {
         accountId: account.id,
         deviceId: account.deviceId,
         roleKey: role.key,
+        requestPath: requestPath,
+        traceId: traceId,
         issuedAt: _clock());
   }
 
@@ -190,13 +226,34 @@ class MiyousheClient {
       throw const MiyousheException(
           ApiFailure.verification, '本次验证已失效，请重新获取验证码。');
     }
-    await _request(account, 'api-takumi-record.mihoyo.com',
+    final expectedPath =
+        Uri.https('api-takumi-record.mihoyo.com', _notePath(role.game))
+            .toString();
+    if (verification.requestPath != expectedPath) {
+      throw const MiyousheException(
+          ApiFailure.verification, '确认验证码：验证对应的游戏请求已变化，请重新加载。',
+          stage: ApiStage.verificationConfirm);
+    }
+    final data = await _request(account, 'api-takumi-record.mihoyo.com',
         '/game_record/app/card/wapi/verifyVerification',
-        body: proof.toJson(), record: true, recordGame: role.game);
+        body: proof.toJson(),
+        record: true,
+        recordGame: role.game,
+        stage: ApiStage.verificationConfirm,
+        challengePath: verification.requestPath,
+        challengeTrace: verification.traceId,
+        expectChallenge: true);
+    final accepted = data['challenge'];
+    if (!RecordVerification.validPass(accepted)) {
+      throw const MiyousheException(
+          ApiFailure.protocol, '确认验证码：米游社未返回重试凭据，暂时无法确认验证成功。',
+          stage: ApiStage.verificationConfirm);
+    }
     // Only an official successful response permits a retry with this challenge.
-    // Keep it in memory, scoped to this account, device and role; never persist it.
+    // This is MiYouShe's returned credential, not the raw GeeTest challenge.
+    // Keep it in memory until the next read or expiry; never persist it.
     _recordPasses[_passKey(account, role)] = (
-      challenge: proof.challenge,
+      challenge: accepted as String,
       expires: verification.issuedAt.add(const Duration(minutes: 5))
     );
   }
@@ -269,6 +326,10 @@ class MiyousheClient {
       Map<String, dynamic>? body,
       bool record = false,
       Game? recordGame,
+      ApiStage? stage,
+      void Function(Map<String, String>)? onResponseHeaders,
+      String? challengePath,
+      String? challengeTrace,
       String? verifiedChallenge,
       bool expectChallenge = false,
       Game? game}) async {
@@ -294,10 +355,10 @@ class MiyousheClient {
         'x-rpc-client_type': '5',
         'x-rpc-device_id': account.deviceId,
         'x-rpc-channel': 'miyousheluodi',
-        'Referer': record && !path.contains('game_record_zzz')
+        'Referer': record && recordGame != Game.zenless
             ? 'https://webstatic.mihoyo.com/'
             : 'https://act.mihoyo.com/',
-        'Origin': record && !path.contains('game_record_zzz')
+        'Origin': record && recordGame != Game.zenless
             ? 'https://webstatic.mihoyo.com'
             : 'https://act.mihoyo.com',
         'User-Agent': 'Mozilla/5.0 miHoYoBBS/${MiyousheProtocol.appVersion}',
@@ -313,6 +374,12 @@ class MiyousheClient {
       if (recordGame != null) {
         request.headers.addAll(recordMetadata(recordGame));
       }
+      if (challengePath != null) {
+        request.headers['x-rpc-challenge_path'] = challengePath;
+      }
+      if (RecordVerification.validTrace(challengeTrace)) {
+        request.headers['x-rpc-challenge_trace'] = challengeTrace!;
+      }
       if (verifiedChallenge != null) {
         request.headers['x-rpc-challenge'] = verifiedChallenge;
       }
@@ -324,6 +391,7 @@ class MiyousheClient {
     try {
       final response = await (() async {
         final stream = await _http.send(request);
+        onResponseHeaders?.call(stream.headers);
         if (stream.statusCode != 200) {
           throw const MiyousheException(ApiFailure.network, '米游社暂时没有响应，请稍后重试。');
         }
@@ -347,30 +415,42 @@ class MiyousheClient {
         throw _AlreadySigned();
       }
       if ({-100, 10001, 10002, 10101}.contains(code)) {
-        throw const MiyousheException(ApiFailure.expired, '登录已过期，请重新连接米游社账号。');
+        throw MiyousheException(ApiFailure.expired, '登录已过期，请重新连接米游社账号。',
+            code: code);
       }
       final risk = number(data['risk_code']);
-      if ({1034, 5003, 10035, 10041, -999}.contains(code) ||
+      if ({1034, 10306, 5003, 10035, 10041, -999}.contains(code) ||
           (risk != null && risk != 0) ||
           (!expectChallenge &&
               ((data['gt']?.toString().isNotEmpty ?? false) ||
                   (data['challenge']?.toString().isNotEmpty ?? false)))) {
         throw MiyousheException(
-            ApiFailure.verification, '米游社要求安全验证（$code）。请点击“完成安全验证”后重试。');
+            ApiFailure.verification,
+            stage == ApiStage.verificationConfirm
+                ? '米游社未接受本次验证码（错误码 $code），请重新加载后手动验证。'
+                : '米游社要求安全验证（$code）。请点击“完成安全验证”后重试。',
+            code: code);
       }
       if (code != 0) {
         throw MiyousheException(ApiFailure.protocol,
-            '米游社暂时无法提供这项数据（错误码 ${code ?? '未知'}），请检查登录状态或稍后重试。');
+            '米游社暂时无法提供这项数据（错误码 ${code ?? '未知'}），请检查登录状态或稍后重试。',
+            code: code);
       }
       return data;
-    } on MiyousheException {
-      rethrow;
+    } on MiyousheException catch (error) {
+      if (stage == null || error.stage != null) rethrow;
+      throw MiyousheException(error.kind, '${stage.label}：${error.message}',
+          code: error.code, stage: stage);
     } on _AlreadySigned {
       rethrow;
     } on TimeoutException {
-      throw const MiyousheException(ApiFailure.network, '连接超时，请检查网络后重试。');
+      throw MiyousheException(ApiFailure.network,
+          '${stage == null ? '' : '${stage.label}：'}连接超时，请检查网络后重试。',
+          stage: stage);
     } catch (_) {
-      throw const MiyousheException(ApiFailure.network, '连接未完成，请检查网络后重试。');
+      throw MiyousheException(ApiFailure.network,
+          '${stage == null ? '' : '${stage.label}：'}连接未完成，请检查网络后重试。',
+          stage: stage);
     }
   }
 

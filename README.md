@@ -95,7 +95,7 @@ Windows / Android / iOS 在“账号”页可打开官方网页登录，完成�
 - 签到写请求失败后不自动重试，避免结果不明确时重复提交。
 - 签到提交成功后再次读取官方状态，未确认时不会标记成功。
 - 体力同步与签到的错误独立显示。便笺出现 1034 / 10035 / 10041 时可点击“完成安全验证”，由本人操作极验验证码；向米游社确认通过后重新查询当前角色。验证码组件不接收 Cookie、账号 ID 或游戏 UID；极验会处理验证所需的设备与网络信息。验证参数只在内存中保留至多 5 分钟，不使用打码服务。验证码通过但数据仍被限制时，继续显示失败。
-- 0.1.3 移除了无法操作的官方工具桌面下载页，改用 `createVerification → 极验人工交互 → verifyVerification → 便笺查询`。接口单元测试通过不代表已通过真实账号的安全验证，仍需本人测试。
+- 人工验证采用 `createVerification → 极验人工交互 → verifyVerification → 便笺查询`。0.1.4 按官方前端补齐失败请求地址与追踪标识、`is_high=true`，使用确认接口返回的新凭据单次重试，不能把极验原始 challenge 当作米游社返回凭据。错误分别标明获取、确认或查询阶段。接口测试通过不代表已通过真实账号验证，仍需本人测试。
 
 上架边界与自托管方案见 [华为应用市场上架评估](docs/appgallery-assessment.md)。当前版本为开发测试版，尚未完成接口及素材授权、正式隐私政策和上架资质准备。
 
@@ -113,6 +113,6 @@ test/                  模拟接口、错误处理和响应式界面测试
 
 游戏接口地址和协议字段参考米游社客户端接口及 [GsCore](https://github.com/Genshin-bots/gsuid_core) 等项目的公开资料；本项目没有嵌入或运行其插件代码。
 
-人工验证的接口字段参考 [GsCore 验证请求](https://github.com/Genshin-bots/gsuid_core/blob/master/gsuid_core/utils/api/mys/pass_request.py)，验证码交互使用[极验官方 Web SDK](https://docs.geetest.com/captcha/apirefer/api/web)。未集成上游的自动验证服务；只由用户操作验证码，并由米游社服务端确认。
+人工验证的接口字段参考 [GsCore 验证请求](https://github.com/Genshin-bots/gsuid_core/blob/master/gsuid_core/utils/api/mys/pass_request.py)，完整上下文与重试流程按[米游社官方前端](https://webstatic.mihoyo.com/app/community-game-records/)核对（见 [0.1.4 核对记录](docs/testing/record-verification-protocol.md)），验证码交互使用[极验官方 Web SDK](https://docs.geetest.com/captcha/apirefer/api/web)。未集成上游的自动验证服务；只由用户操作验证码，并由米游社服务端确认。
 
 原创源码采用 MIT。游戏图标版权归米哈游等各自权利人所有，不属于 MIT 授权内容。HarmonyOS Sans 字体遵循[华为原始字体许可](assets/fonts/LICENSE.txt)，未修改、未子集化；来源与校验值见 [sources.json](assets/fonts/sources.json)。字体随应用分发，不作为独立字体商品。本项目为独立工具，与米哈游无隶属关系。
