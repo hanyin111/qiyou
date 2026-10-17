@@ -225,7 +225,8 @@ class _ConnectDialogState extends State<ConnectDialog> {
                               color: context.palette.secondary,
                               height: 1.8)),
                       SizedBox(height: 14),
-                      Text('不要在聊天、截图或公开日志中分享登录凭证。凭证只在本机加密保存。',
+                      Text(
+                          '不要在聊天、截图或公开日志中分享登录凭证。默认在本机加密保存；开启账号同步后，仅上传加密备份到自选服务。',
                           style: TextStyle(
                               fontSize: 11,
                               color: context.palette.secondary,

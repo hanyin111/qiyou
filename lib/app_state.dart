@@ -7,6 +7,7 @@ import 'data/kuro_client.dart';
 import 'data/taygedo_client.dart';
 import 'data/record_verification.dart';
 import 'data/record_browser_session.dart';
+import 'data/sync_models.dart';
 import 'domain/models.dart';
 
 class AppState extends ChangeNotifier {
@@ -29,6 +30,7 @@ class AppState extends ChangeNotifier {
         Community.taygedo => taygedo,
       };
   final DeviceBridge bridge;
+  SyncConnection? syncConnection;
   bool demo = true,
       busy = false,
       hideUid = true,
@@ -75,6 +77,15 @@ class AppState extends ChangeNotifier {
         _savedTasks = (json['tasks'] as List? ?? [])
             .map((item) => RoutineTask.fromJson(object(item)))
             .toList();
+        // An invalid optional sync configuration must not hide saved accounts.
+        try {
+          if (json['syncConnection'] is Map) {
+            syncConnection =
+                SyncConnection.fromJson(object(json['syncConnection']));
+          }
+        } catch (_) {
+          syncConnection = null;
+        }
         if (taskDay != chinaDay()) {
           for (final task in _savedTasks) {
             task.done = false;
@@ -526,17 +537,112 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<void> _persist({List<Account>? accountOverride}) =>
+  void _requireSyncStorage() {
+    if (!bridge.supportsAccounts || !storageReady) {
+      throw const SyncException('账号同步需要可用的本机安全存储，浏览器演示不接收凭据。');
+    }
+  }
+
+  SyncContents exportSyncContents() {
+    _requireSyncStorage();
+    // Round trip creates an independent snapshot while an upload is in flight.
+    return SyncContents.fromJson({
+      'accounts': accounts.map((a) => a.toJson()).toList(),
+      'tasks': (demo ? _savedTasks : tasks).map((t) => t.toJson()).toList(),
+      'taskDay': taskDay,
+      'dark': dark,
+      'hideUid': hideUid,
+    });
+  }
+
+  Future<T> runSync<T>(Future<T> Function() operation) async {
+    _requireSyncStorage();
+    if (busy) throw const SyncException('正在处理其他操作，请稍后重试。');
+    busy = true;
+    notifyListeners();
+    try {
+      return await operation();
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> saveSyncConnection(SyncConnection? connection) async {
+    await runSync(() async {
+      await _persist(syncOverride: connection, clearSync: connection == null);
+      syncConnection = connection;
+    });
+  }
+
+  Future<void> importSyncContents(SyncContents remote,
+      {required String expectedFingerprint,
+      bool preferRemoteSessions = false}) async {
+    await runSync(() async {
+      final local = exportSyncContents();
+      if (local.fingerprint != expectedFingerprint) {
+        throw const SyncException('本机数据在预览后发生变化，请重新下载并预览。');
+      }
+      final mergedAccounts = {
+        for (final a in local.accounts) syncAccountKey(a): a
+      };
+      for (final a in remote.accounts) {
+        if (preferRemoteSessions) {
+          mergedAccounts[syncAccountKey(a)] = a;
+        } else {
+          mergedAccounts.putIfAbsent(syncAccountKey(a), () => a);
+        }
+      }
+      final today = chinaDay();
+      RoutineTask normalize(RoutineTask t, String day) => RoutineTask(
+          id: t.id, game: t.game, title: t.title, done: day == today && t.done);
+      final mergedTasks = {
+        for (final t in remote.tasks) t.id: normalize(t, remote.taskDay),
+        for (final t in local.tasks) t.id: normalize(t, local.taskDay)
+      };
+      final merged = SyncContents(
+          accounts: mergedAccounts.values.toList(),
+          tasks: mergedTasks.values.toList(),
+          taskDay: today,
+          dark: remote.dark,
+          hideUid: remote.hideUid);
+      SyncContents.fromJson(merged.toJson());
+      // Commit to the OS vault before changing the visible state. Failed saves
+      // leave all current accounts and sessions intact.
+      await _persist(contentsOverride: merged);
+      accounts = merged.accounts;
+      _savedTasks = merged.tasks;
+      taskDay = today;
+      dark = merged.dark;
+      hideUid = merged.hideUid;
+      if (accounts.isEmpty) {
+        _makeDemo();
+      } else {
+        _makeLive();
+      }
+      activities.clear();
+      _record('已合并云端账号；刷新后读取最新游戏状态');
+    });
+  }
+
+  Future<void> _persist(
+          {List<Account>? accountOverride,
+          SyncContents? contentsOverride,
+          SyncConnection? syncOverride,
+          bool clearSync = false}) =>
       bridge.write(jsonEncode({
         'version': 1,
-        'accounts': (accountOverride ?? accounts)
+        'accounts': (contentsOverride?.accounts ?? accountOverride ?? accounts)
             .map((account) => account.toJson())
             .toList(),
-        'hideUid': hideUid,
-        'dark': dark,
-        'taskDay': taskDay,
-        'tasks':
-            (demo ? _savedTasks : tasks).map((task) => task.toJson()).toList(),
+        'hideUid': contentsOverride?.hideUid ?? hideUid,
+        'dark': contentsOverride?.dark ?? dark,
+        'taskDay': contentsOverride?.taskDay ?? taskDay,
+        'tasks': (contentsOverride?.tasks ?? (demo ? _savedTasks : tasks))
+            .map((task) => task.toJson())
+            .toList(),
+        if (!clearSync && (syncOverride ?? syncConnection) != null)
+          'syncConnection': (syncOverride ?? syncConnection)!.toJson(),
       }));
 
   void _record(String text, {bool success = true}) {

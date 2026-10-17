@@ -3,6 +3,7 @@ import '../app_state.dart';
 import '../domain/models.dart';
 import 'design.dart';
 import 'dashboard.dart';
+import 'sync_page.dart';
 
 class InfoBanner extends StatelessWidget {
   const InfoBanner(this.text, {super.key, this.icon = Icons.shield_outlined});
@@ -145,7 +146,8 @@ class AccountPage extends StatelessWidget {
                     ]),
                   ]))),
         SizedBox(height: 22),
-        InfoBanner('账号凭证只在设备本地加密保存，用于向对应官方社区请求游戏状态和签到。'),
+        InfoBanner(
+            '账号凭证在设备本地加密保存。主动开启账号同步后，备份会加密上传到你选择的 WebDAV 服务。游戏请求仍发送到对应官方社区。'),
         SizedBox(height: 22),
         Surface(
             color: context.palette.selected,
@@ -241,6 +243,23 @@ class SettingsPage extends StatelessWidget {
                       : '安全存储暂不可用'
                   : '浏览器演示不接收登录凭证'),
           Divider(height: 28),
+          ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.cloud_sync_outlined,
+                  color: context.palette.accent),
+              title: Text('账号同步', style: TextStyle(fontSize: 14)),
+              subtitle: Text('自选 WebDAV · 端到端加密 · 手动同步',
+                  style: TextStyle(
+                      fontSize: 11, color: context.palette.secondary)),
+              trailing: Icon(Icons.chevron_right_rounded),
+              enabled: state.storageReady && !state.busy,
+              onTap: state.storageReady && !state.busy
+                  ? () => Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                          builder: (_) => SyncPage(state: state)))
+                  : null),
+          Divider(height: 28),
           _row(context, Icons.schedule_rounded, '后台自动签到',
               '首版暂不支持；打开 App 后可一键签到'),
           Divider(height: 28),
@@ -267,7 +286,7 @@ class SettingsPage extends StatelessWidget {
           Brand(compact: true),
           Spacer(),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('0.1.8',
+            Text('0.1.9',
                 style: TextStyle(
                     fontSize: 10,
                     letterSpacing: 1,
