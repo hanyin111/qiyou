@@ -4,7 +4,8 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 import '../domain/models.dart';
 import 'miyoushe_client.dart';
-import 'verification_diagnostics.dart' show safeVerificationReason;
+import 'verification_diagnostics.dart'
+    show safeVerificationReason, writeVerificationDiagnostic;
 
 // One fixed official host per client. Never follow a credential-bearing redirect.
 class CommunityHttp {
@@ -47,18 +48,40 @@ class CommunityHttp {
         }
         final json = object(jsonDecode(utf8.decode(bytes)));
         final code = number(json['code']);
+        if (community == Community.kuro &&
+            const {
+              '/aki/roleBox/requestToken',
+              '/aki/roleBox/akiBox/refreshData',
+              '/gamer/widget/game3/getData',
+            }.contains(path)) {
+          // Explicit developer opt-in only. No header values, role IDs, raw
+          // responses or credentials enter the local diagnostic.
+          await writeVerificationDiagnostic({
+            'version': '0.1.11',
+            'community': 'kuro',
+            'stage': path,
+            'code': code,
+            'has_community_token': headers.containsKey('token'),
+            'has_data_token': headers.containsKey('b-at'),
+            if (path.endsWith('/refreshData'))
+              'refresh_confirmed': json['data'] == true,
+          }, environmentKey: 'QIYOU_KURO_REPORT');
+        }
         if (!acceptedCodes.contains(code)) {
+          final operation = switch (path) {
+            '/aki/roleBox/requestToken' => '获取鸣潮数据令牌',
+            '/aki/roleBox/akiBox/refreshData' => '刷新鸣潮数据',
+            '/gamer/widget/game3/getData' => '读取鸣潮体力',
+            _ => '查询',
+          };
+          final reason = community == Community.kuro
+              ? safeVerificationReason(json['msg'], [
+                  ...headers.values,
+                  ...?form?.values,
+                  ...?query?.values,
+                ])
+              : '';
           if (community == Community.kuro && code == 10901) {
-            final operation = switch (path) {
-              '/aki/roleBox/requestToken' => '获取鸣潮数据令牌',
-              '/gamer/widget/game3/getData' => '读取鸣潮体力',
-              _ => '查询',
-            };
-            final reason = safeVerificationReason(json['msg'], [
-              ...headers.values,
-              ...?form?.values,
-              ...?query?.values,
-            ]);
             throw MiyousheException(ApiFailure.protocol,
                 '库街区$operation失败（10901）。请重新连接并完成官方短信登录，获取游戏数据会话。${reason.isEmpty ? '' : '\n官方提示：$reason'}',
                 code: code);
@@ -78,7 +101,9 @@ class CommunityHttp {
                   ? '${community.title}登录已过期，请重新连接。'
                   : risk
                       ? '${community.title}要求人工安全验证，请在官方页面处理后重新连接。'
-                      : '${community.title}未完成请求（错误码 ${code ?? '未知'}），请稍后重试。',
+                      : community == Community.kuro
+                          ? '库街区$operation失败（错误码 ${code ?? '未知'}）。${reason.isEmpty ? '请稍后重试。' : '\n官方提示：$reason'}'
+                          : '${community.title}未完成请求（错误码 ${code ?? '未知'}），请稍后重试。',
               code: code);
         }
         dynamic data = json['data'];

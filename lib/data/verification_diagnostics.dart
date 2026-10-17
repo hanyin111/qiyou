@@ -18,5 +18,6 @@ String safeVerificationReason(Object? message, Iterable<String> secrets) {
   return value.substring(0, value.length > 160 ? 160 : value.length);
 }
 
-Future<void> writeVerificationDiagnostic(Map<String, Object?> data) =>
-    writer.writeVerificationDiagnostic(data);
+Future<void> writeVerificationDiagnostic(Map<String, Object?> data,
+        {String environmentKey = 'QIYOU_VERIFICATION_REPORT'}) =>
+    writer.writeVerificationDiagnostic(data, environmentKey: environmentKey);

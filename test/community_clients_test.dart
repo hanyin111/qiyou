@@ -220,6 +220,11 @@ void main() {
       }
       expect(request.headers['b-at'], 'synthetic-data-token');
       expect(request.bodyFields['gameId'], '3');
+      if (request.url.path.endsWith('refreshData')) {
+        expect(request.headers.containsKey('token'), isFalse);
+        expect(request.headers['origin'], 'https://web-static.kurobbs.com');
+        return reply(true);
+      }
       return reply(jsonEncode({
         'energyData': {'cur': 120, 'total': 240},
         'livenessData': {'cur': 100, 'total': 100}
@@ -256,7 +261,8 @@ void main() {
             expect(r.bodyFields,
                 {'gameId': '3', 'serverId': ww.region, 'roleId': ww.uid});
             refreshed = true;
-            return reply(null);
+            expect(r.headers.containsKey('token'), isFalse);
+            return reply(true);
           }
           return reply({
             'roleId': ww.uid,
@@ -328,7 +334,9 @@ void main() {
       if (r.url.path.endsWith('requestToken')) {
         return reply({'accessToken': 'synthetic-data-token'});
       }
-      if (r.url.path.endsWith('refreshData')) return reply(null);
+      if (r.url.path.endsWith('refreshData')) {
+        return reply(true);
+      }
       return reply({
         'roleId': 'other-role',
         'energyData': {'cur': 52, 'total': 240}
@@ -337,6 +345,86 @@ void main() {
     addTearDown(client.close);
     await expectLater(
         client.daily(kuroAccount, ww), throwsA(isA<MiyousheException>()));
+  });
+  test('Refresh uses only data auth while widget and sign keep community auth',
+      () async {
+    var refreshed = false;
+    final account = kuroAccount.copyWith(recordHeaders: {
+      'user-agent': 'actual-browser-UA',
+      'devcode': 'actual-device'
+    });
+    final client = KuroClient(transport: MockClient((r) async {
+      if (r.url.path.endsWith('requestToken')) {
+        expect(r.headers['token'], account.cookie);
+        return reply({'accessToken': 'synthetic-data-token'});
+      }
+      expect(r.headers['did'], account.deviceId);
+      expect(r.headers['user-agent'], 'actual-browser-UA');
+      if (r.url.path.endsWith('refreshData')) {
+        // Reproduce the server behaviour that the old test doubles omitted.
+        if (r.headers.containsKey('token')) return reply(null, code: 10000);
+        expect(r.headers['b-at'], 'synthetic-data-token');
+        expect(r.headers['origin'], 'https://web-static.kurobbs.com');
+        expect(r.headers['x-requested-with'], 'com.kurogame.kjq');
+        expect(r.bodyFields.keys.toList(), ['gameId', 'roleId', 'serverId']);
+        refreshed = true;
+        return reply(true, code: 200);
+      }
+      expect(r.headers['token'], account.cookie);
+      if (r.url.path.endsWith('initSignInV2')) {
+        expect(r.headers.containsKey('b-at'), isFalse);
+        return reply({'isSigIn': true});
+      }
+      expect(refreshed, isTrue);
+      return reply({
+        'energyData': {'cur': 1, 'total': 240}
+      });
+    }));
+    addTearDown(client.close);
+    expect((await client.daily(account, ww)).energy, 1);
+    expect(await client.signInfo(account, ww), SignStatus.alreadySigned);
+  });
+  for (final refreshResult in [false, null]) {
+    test('Unconfirmed refresh ($refreshResult) never reads stale widget',
+        () async {
+      final paths = <String>[];
+      final client = KuroClient(transport: MockClient((r) async {
+        paths.add(r.url.path);
+        if (r.url.path.endsWith('requestToken')) {
+          return reply({'accessToken': 'synthetic-data-token'});
+        }
+        return reply(refreshResult, code: 200);
+      }));
+      addTearDown(client.close);
+      await expectLater(
+          client.daily(kuroAccount, ww),
+          throwsA(isA<MiyousheException>()
+              .having((e) => e.message, 'message', contains('未确认鸣潮数据刷新'))));
+      expect(paths,
+          ['/aki/roleBox/requestToken', '/aki/roleBox/akiBox/refreshData']);
+    });
+  }
+  test('10000 identifies refresh stage and redacts official error text',
+      () async {
+    final api = CommunityHttp(Community.kuro, 'api.kurobbs.com',
+        transport: MockClient((r) async => http.Response(
+            jsonEncode({
+              'code': 10000,
+              'msg': '参数错误 synthetic-secret-data-token 123456789'
+            }),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'})));
+    addTearDown(api.close);
+    await expectLater(
+        api.request('/aki/roleBox/akiBox/refreshData',
+            {'b-at': 'synthetic-secret-data-token'},
+            form: {'roleId': '123456789'}),
+        throwsA(isA<MiyousheException>()
+            .having((e) => e.message, 'stage', contains('刷新鸣潮数据失败'))
+            .having((e) => e.message, 'code', contains('10000'))
+            .having((e) => e.message, 'token',
+                isNot(contains('synthetic-secret-data-token')))
+            .having((e) => e.message, 'role', isNot(contains('123456789')))));
   });
   test('PGR uses serum and activity data without a Wuthering Waves data token',
       () async {

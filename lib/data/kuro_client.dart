@@ -140,8 +140,25 @@ class KuroClient implements CommunityClient {
       // The widget endpoint can keep an old snapshot after stamina is spent.
       // Ask the official role service to refresh before reading that snapshot.
       // Failure stops this query instead of presenting cached data as current.
-      await _api.request('/aki/roleBox/akiBox/refreshData', headers,
-          form: _role(role), acceptedCodes: const {0, 200});
+      // Data-centre refresh rejects an extra community token with code 10000.
+      // Keep the real bound did+b-at, separate from community authentication.
+      final refreshHeaders = {...headers}..remove('token');
+      refreshHeaders['origin'] = 'https://web-static.kurobbs.com';
+      refreshHeaders['referer'] = 'https://web-static.kurobbs.com/';
+      refreshHeaders['x-requested-with'] = 'com.kurogame.kjq';
+      final refreshed = await _api.request(
+          '/aki/roleBox/akiBox/refreshData', refreshHeaders, form: {
+        'gameId': role.game.communityGameId,
+        'roleId': role.uid,
+        'serverId': role.region
+      }, acceptedCodes: const {
+        0,
+        200
+      });
+      if (refreshed != true) {
+        throw const MiyousheException(
+            ApiFailure.protocol, '库街区未确认鸣潮数据刷新，未读取旧缓存。请稍后重试。');
+      }
     }
     final data = object(await _api.request(
         role.game == Game.wutheringWaves

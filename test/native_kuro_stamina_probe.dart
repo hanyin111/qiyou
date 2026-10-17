@@ -34,7 +34,7 @@ class _ProbeState extends State<_Probe> {
       exit(0);
     }
     final report = <String, dynamic>{
-      'version': '0.1.10',
+      'version': '0.1.11',
       'credential_values_recorded': false,
       'vault_write': false,
       'sign_requests': false
@@ -88,8 +88,23 @@ class _ProbeState extends State<_Probe> {
             result['before_energy'] =
                 number(object(before['energyData'])['cur']);
             stage = 'refresh-data';
-            await api.request('/aki/roleBox/akiBox/refreshData', headers,
-                form: form, acceptedCodes: const {0, 200});
+            final dataHeaders = {...headers}..remove('token');
+            dataHeaders['origin'] = 'https://web-static.kurobbs.com';
+            dataHeaders['referer'] = 'https://web-static.kurobbs.com/';
+            dataHeaders['x-requested-with'] = 'com.kurogame.kjq';
+            final accepted = await api.request(
+                '/aki/roleBox/akiBox/refreshData', dataHeaders, form: {
+              'gameId': '3',
+              'roleId': role.uid,
+              'serverId': role.region
+            }, acceptedCodes: const {
+              0,
+              200
+            });
+            result['refresh_confirmed'] = accepted == true;
+            if (accepted != true) {
+              throw StateError('Refresh not confirmed');
+            }
             stage = 'widget-after-refresh';
             final after = object(await api.request(
                 '/gamer/widget/game3/getData', headers,
@@ -114,7 +129,8 @@ class _ProbeState extends State<_Probe> {
               'passed': false,
               'stage': stage,
               'code': e.code,
-              'kind': e.kind.name
+              'kind': e.kind.name,
+              'reason': e.message
             });
           } catch (_) {
             result.addAll({'passed': false, 'stage': stage});
