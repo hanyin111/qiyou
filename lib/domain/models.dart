@@ -133,11 +133,15 @@ class Account {
       required this.deviceId,
       required this.roles,
       this.community = Community.miyoushe,
-      this.recordHeaders = const {}});
+      this.recordHeaders = const {},
+      this.hiddenGames = const {}});
   final String id, cookie, deviceId;
   final List<Role> roles;
   final Map<String, String> recordHeaders;
   final Community community;
+  final Set<Game> hiddenGames;
+  Iterable<Role> get activeRoles =>
+      roles.where((r) => !hiddenGames.contains(r.game));
   String get title =>
       roles.isEmpty ? '${community.title}账号' : roles.first.nickname;
   Map<String, dynamic> toJson() => {
@@ -146,6 +150,7 @@ class Account {
         'deviceId': deviceId,
         'community': community.name,
         'recordHeaders': recordHeaders,
+        'hiddenGames': hiddenGames.map((g) => g.name).toList(),
         'roles': roles.map((role) => role.toJson()).toList()
       };
   factory Account.fromJson(Map<String, dynamic> json) => Account(
@@ -156,9 +161,25 @@ class Account {
           Community.values.byName(json['community'] as String? ?? 'miyoushe'),
       recordHeaders: object(json['recordHeaders'])
           .map((key, value) => MapEntry(key, '$value')),
+      hiddenGames: (json['hiddenGames'] as List? ?? const [])
+          .map((g) => Game.values.byName(g as String))
+          .toSet(),
       roles: (json['roles'] as List)
           .map((value) => Role.fromJson(object(value)))
           .toList());
+  Account copyWith(
+          {String? cookie,
+          String? deviceId,
+          Map<String, String>? recordHeaders,
+          Set<Game>? hiddenGames}) =>
+      Account(
+          id: id,
+          cookie: cookie ?? this.cookie,
+          deviceId: deviceId ?? this.deviceId,
+          roles: roles,
+          community: community,
+          recordHeaders: recordHeaders ?? this.recordHeaders,
+          hiddenGames: hiddenGames ?? this.hiddenGames);
   // Deliberately keep credentials out of debug output and diagnostics.
   @override
   String toString() => 'Account(roles: ${roles.length})';
@@ -208,10 +229,34 @@ class DailyNote {
         final activity = object(
             data[game == Game.wutheringWaves ? 'livenessData' : 'activeData']);
         final reserve = object(data['storeEnergyData']);
+        final current = number(energy['cur']),
+            capacity = number(energy['total']);
+        int? recovery;
+        if (game == Game.wutheringWaves &&
+            current != null &&
+            capacity != null &&
+            capacity > 0) {
+          if (current >= capacity) {
+            recovery = 0;
+          } else {
+            final raw = number(energy['refreshTimeStamp']);
+            // Kuro supplies the absolute time when waveplates are full, not a
+            // duration. Accept Unix seconds or milliseconds, never small offsets.
+            if (raw != null && raw >= 1000000000) {
+              final epochMs = raw >= 100000000000 ? raw : raw * 1000;
+              final remaining =
+                  ((epochMs - at.millisecondsSinceEpoch) / 1000).ceil();
+              // A past deadline with non-full energy indicates inconsistent
+              // cached data; it must not be labelled as already full.
+              if (remaining > 0) recovery = remaining;
+            }
+          }
+        }
         return DailyNote(
             syncedAt: at,
-            energy: number(energy['cur']),
-            capacity: number(energy['total']),
+            energy: current,
+            capacity: capacity,
+            recoverySeconds: recovery,
             metrics: [
               Metric('每日活跃', count(activity['cur'], activity['total']),
                   complete: complete(activity['cur'], activity['total'])),

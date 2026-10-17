@@ -136,6 +136,13 @@ class KuroClient implements CommunityClient {
   @override
   Future<DailyNote> daily(Account account, Role role) async {
     final headers = await _gameHeaders(account, role);
+    if (role.game == Game.wutheringWaves) {
+      // The widget endpoint can keep an old snapshot after stamina is spent.
+      // Ask the official role service to refresh before reading that snapshot.
+      // Failure stops this query instead of presenting cached data as current.
+      await _api.request('/aki/roleBox/akiBox/refreshData', headers,
+          form: _role(role), acceptedCodes: const {0, 200});
+    }
     final data = object(await _api.request(
         role.game == Game.wutheringWaves
             ? '/gamer/widget/game3/getData'
@@ -152,6 +159,12 @@ class KuroClient implements CommunityClient {
         }));
     if (data['temporaryClose'] == true) {
       throw const MiyousheException(ApiFailure.protocol, '库街区暂时关闭了此角色的数据查询。');
+    }
+    if ((data['roleId'] != null && data['roleId'].toString() != role.uid) ||
+        (data['serverId'] != null &&
+            data['serverId'].toString() != role.region)) {
+      throw const MiyousheException(
+          ApiFailure.protocol, '库街区返回的角色与当前选择不一致，已停止显示。');
     }
     final note = DailyNote.parse(role.game, data, _clock());
     if (note.energy == null || note.capacity == null || note.capacity! <= 0) {

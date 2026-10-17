@@ -107,6 +107,7 @@ class SyncContents {
             a.cookie.isEmpty ||
             a.cookie.length > 64000 ||
             a.recordHeaders.length > 30 ||
+            a.hiddenGames.any((g) => g.community != a.community) ||
             a.roles.any((r) => r.game.community != a.community) ||
             [
               a.id,

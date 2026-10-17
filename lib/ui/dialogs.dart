@@ -10,7 +10,7 @@ Future<void> showGameDetails(BuildContext context, AppState state,
     GameEntry entry, ValueChanged<String> toast) async {
   await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
             title: Row(children: [
               GameMark(entry.role.game),
               SizedBox(width: 14),
@@ -18,10 +18,11 @@ Future<void> showGameDetails(BuildContext context, AppState state,
             ]),
             content: SizedBox(
                 width: 380,
-                child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                child: SingleChildScrollView(
+                    child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                       Text('${entry.role.nickname} · ${entry.role.serverName}'),
                       SizedBox(height: 10),
                       SelectableText(
@@ -49,20 +50,62 @@ Future<void> showGameDetails(BuildContext context, AppState state,
                             style: TextStyle(
                                 fontSize: 11, color: context.palette.accent))
                       ],
-                    ])),
+                    ]))),
             actions: [
+              if (!state.demo)
+                TextButton(
+                    onPressed: state.busy
+                        ? null
+                        : () async {
+                            final account = state.accounts
+                                .where((a) => a.id == entry.accountId)
+                                .firstOrNull;
+                            Navigator.pop(dialogContext);
+                            if (account != null) {
+                              await confirmRemoveGame(context, state, account,
+                                  entry.role.game, toast);
+                            }
+                          },
+                    child: Text('移除游戏')),
               TextButton(
-                  onPressed: () => Navigator.pop(context), child: Text('关闭')),
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: Text('关闭')),
               FilledButton(
                   onPressed: state.busy
                       ? null
                       : () async {
-                          Navigator.pop(context);
+                          Navigator.pop(dialogContext);
                           toast(await state.signAll(only: entry));
                         },
                   child: Text(entry.signStatus.isDone ? '今日已签' : '签到'))
             ],
           ));
+}
+
+Future<void> confirmRemoveGame(BuildContext context, AppState state,
+    Account account, Game game, ValueChanged<String> toast) async {
+  final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+            title: Text('移除${game.shortTitle}？'),
+            content: Text(
+                '此账号的${game.shortTitle}将从游戏页移除，并停止体力查询和签到。社区账号与其他游戏会保留，可在账号页恢复。不会更改官方绑定。'),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text('取消')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text('移除游戏'))
+            ],
+          ));
+  if (confirmed != true) return;
+  try {
+    await state.setGameHidden(account, game, true);
+    toast('${game.shortTitle}已移除，可在账号页恢复');
+  } catch (_) {
+    toast('暂时无法移除游戏，请稍后重试');
+  }
 }
 
 Future<void> showAddTask(BuildContext context, AppState state) async {

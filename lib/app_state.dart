@@ -193,7 +193,7 @@ class AppState extends ChangeNotifier {
     accountFilter = null;
     entries = [
       for (final account in accounts)
-        for (final role in account.roles)
+        for (final role in account.activeRoles)
           GameEntry(role: role, accountId: account.id)
     ];
     tasks = _savedTasks;
@@ -259,6 +259,8 @@ class AppState extends ChangeNotifier {
             community: community,
             recordHeaders: account.recordHeaders);
       }
+      account =
+          account.copyWith(hiddenGames: previous?.hiddenGames ?? const {});
       final updated = [
         ...accounts.where((item) => item.id != account.id),
         account
@@ -340,7 +342,10 @@ class AppState extends ChangeNotifier {
   Future<String> signAll({GameEntry? only}) async {
     if (busy) return '正在处理，请稍候';
     checkDay();
-    final selected = only == null ? visibleEntries : [only];
+    final selected = only == null
+        ? visibleEntries
+        : entries.where((e) => identical(e, only)).toList();
+    if (selected.isEmpty) return '当前没有可签到角色，请先在账号页恢复游戏';
     final pending =
         selected.where((entry) => !entry.signStatus.isDone).toList();
     if (pending.isEmpty) return '这些角色今天已经签过啦';
@@ -417,7 +422,8 @@ class AppState extends ChangeNotifier {
           'x-rpc-device_id': session.deviceId,
           'x-rpc-device_fp': session.fingerprint,
           'user-agent': session.userAgent
-        });
+        },
+        hiddenGames: previous.hiddenGames);
     busy = true;
     notifyListeners();
     try {
@@ -528,6 +534,41 @@ class AppState extends ChangeNotifier {
     if (!demo) await refresh();
   }
 
+  Future<void> setGameHidden(Account account, Game game, bool hidden) async {
+    if (busy || !storageReady) throw StateError('正在处理其他操作，请稍后重试。');
+    final index = accounts.indexWhere(
+        (a) => a.id == account.id && a.community == account.community);
+    if (index < 0 || !accounts[index].roles.any((r) => r.game == game)) {
+      throw StateError('未找到此账号的游戏。');
+    }
+    final games = {...accounts[index].hiddenGames};
+    hidden ? games.add(game) : games.remove(game);
+    final updated = [...accounts];
+    updated[index] = accounts[index].copyWith(hiddenGames: games);
+    busy = true;
+    notifyListeners();
+    try {
+      await _persist(accountOverride: updated);
+      accounts = updated;
+      if (!demo) {
+        final previous = {for (final e in entries) e.key: e};
+        entries = [
+          for (final a in accounts)
+            for (final r in a.activeRoles)
+              previous['${a.id}:${r.key}'] ??
+                  GameEntry(role: r, accountId: a.id)
+        ];
+        if (filter != null && !entries.any((e) => e.role.game == filter)) {
+          filter = null;
+        }
+      }
+      _record('${game.shortTitle}已${hidden ? '移除' : '恢复'}', success: true);
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> _savePreferences() async {
     try {
       await _persist();
@@ -590,7 +631,10 @@ class AppState extends ChangeNotifier {
         if (preferRemoteSessions) {
           mergedAccounts[syncAccountKey(a)] = a;
         } else {
-          mergedAccounts.putIfAbsent(syncAccountKey(a), () => a);
+          final current = mergedAccounts[syncAccountKey(a)];
+          mergedAccounts[syncAccountKey(a)] = current == null
+              ? a
+              : current.copyWith(hiddenGames: a.hiddenGames);
         }
       }
       final today = chinaDay();

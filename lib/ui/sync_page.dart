@@ -184,7 +184,7 @@ class _SyncPageState extends State<SyncPage> {
                                   '备份时间：${time.year}/${time.month}/${time.day} ${clockText(time)}'),
                               const SizedBox(height: 12),
                               const Text(
-                                  '添加云端账号和清单，保留本机独有内容，并应用云端亮暗模式及 UID 设置。同一清单保留本机进度；旧日期的完成状态会重置。'),
+                                  '添加云端账号和清单，保留本机独有内容，并应用云端亮暗模式、UID 设置和游戏移除状态。同一清单保留本机进度；旧日期的完成状态会重置。'),
                               if (overlaps > 0) ...[
                                 const SizedBox(height: 12),
                                 CheckboxListTile(

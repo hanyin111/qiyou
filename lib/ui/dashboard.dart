@@ -39,17 +39,29 @@ class Overview extends StatelessWidget {
                   ? null
                   : () async => toast(await state.signAll()),
               icon: Icon(
-                  state.signedCount == state.entries.length
+                  state.entries.isNotEmpty &&
+                          state.signedCount == state.entries.length
                       ? Icons.check_rounded
                       : Icons.task_alt_rounded,
                   size: 17),
               label: Text(state.busy
                   ? '处理中'
-                  : state.signedCount == state.entries.length
+                  : state.entries.isNotEmpty &&
+                          state.signedCount == state.entries.length
                       ? '今日已签'
                       : '一键签到')),
         ]),
         SizedBox(height: 20),
+        if (!state.demo && state.entries.isEmpty)
+          Surface(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text('暂未显示游戏'),
+                SizedBox(height: 10),
+                Text('可以在账号页恢复已移除的游戏，或连接新的社区账号。'),
+                TextButton(onPressed: () => goPage(2), child: Text('管理游戏')),
+              ])),
         if (state.demo) ...[
           Row(children: [
             Expanded(

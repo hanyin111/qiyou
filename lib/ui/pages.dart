@@ -4,6 +4,7 @@ import '../domain/models.dart';
 import 'design.dart';
 import 'dashboard.dart';
 import 'sync_page.dart';
+import 'dialogs.dart' show confirmRemoveGame;
 
 class InfoBanner extends StatelessWidget {
   const InfoBanner(this.text, {super.key, this.icon = Icons.shield_outlined});
@@ -125,7 +126,7 @@ class AccountPage extends StatelessWidget {
                                 style: TextStyle(
                                     fontSize: 17, fontWeight: FontWeight.w700)),
                             Text(
-                                '${account.community.title} · ${account.roles.length} 个角色',
+                                '${account.community.title} · ${account.activeRoles.length} / ${account.roles.length} 个启用角色',
                                 style: TextStyle(
                                     fontSize: 11,
                                     color: context.palette.secondary)),
@@ -139,11 +140,52 @@ class AccountPage extends StatelessWidget {
                                   color: context.palette.error, fontSize: 12)))
                     ]),
                     SizedBox(height: 18),
-                    Wrap(spacing: 10, runSpacing: 10, children: [
-                      for (final role in account.roles)
-                        Pill('${role.game.shortTitle} · ${role.nickname}',
-                            color: context.palette.accent)
-                    ]),
+                    for (final game in Game.values
+                        .where((g) => account.roles.any((r) => r.game == g)))
+                      Padding(
+                          padding: EdgeInsets.symmetric(vertical: 7),
+                          child: Row(children: [
+                            Opacity(
+                                opacity:
+                                    account.hiddenGames.contains(game) ? .4 : 1,
+                                child: GameMark(game, size: 30)),
+                            SizedBox(width: 12),
+                            Expanded(
+                                child: Text(game.shortTitle,
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        color:
+                                            account.hiddenGames.contains(game)
+                                                ? context.palette.secondary
+                                                : context.palette.text))),
+                            if (account.hiddenGames.contains(game))
+                              Text('已移除',
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      color: context.palette.secondary)),
+                            TextButton(
+                                onPressed: state.busy
+                                    ? null
+                                    : () async {
+                                        if (account.hiddenGames
+                                            .contains(game)) {
+                                          try {
+                                            await state.setGameHidden(
+                                                account, game, false);
+                                            toast(
+                                                '${game.shortTitle}已恢复，请刷新游戏状态');
+                                          } catch (_) {
+                                            toast('暂时无法恢复，请稍后重试');
+                                          }
+                                        } else {
+                                          await confirmRemoveGame(context,
+                                              state, account, game, toast);
+                                        }
+                                      },
+                                child: Text(account.hiddenGames.contains(game)
+                                    ? '恢复'
+                                    : '移除')),
+                          ])),
                   ]))),
         SizedBox(height: 22),
         InfoBanner(
@@ -286,7 +328,7 @@ class SettingsPage extends StatelessWidget {
           Brand(compact: true),
           Spacer(),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('0.1.9',
+            Text('0.1.10',
                 style: TextStyle(
                     fontSize: 10,
                     letterSpacing: 1,

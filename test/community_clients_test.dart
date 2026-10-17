@@ -227,10 +227,116 @@ void main() {
     }));
     addTearDown(client.close);
     final note = await client.daily(kuroAccount, ww);
-    expect(paths, ['/aki/roleBox/requestToken', '/gamer/widget/game3/getData']);
+    expect(paths, [
+      '/aki/roleBox/requestToken',
+      '/aki/roleBox/akiBox/refreshData',
+      '/gamer/widget/game3/getData'
+    ]);
     expect(note.energy, 120);
     expect(note.metrics.first.complete, isTrue);
     expect(note.recoverySeconds, isNull);
+  });
+  test(
+      'Wuthering Waves refreshes stale 52 energy to current 1 before reading recovery deadline',
+      () async {
+    final now = DateTime.utc(2026, 10, 17, 7);
+    final paths = <String>[];
+    var refreshed = false;
+    final client = KuroClient(
+        clock: () => now,
+        transport: MockClient((r) async {
+          paths.add(r.url.path);
+          if (r.url.path.endsWith('requestToken')) {
+            return reply({'accessToken': 'synthetic-data-token'});
+          }
+          expect(r.headers['b-at'], 'synthetic-data-token');
+          expect(r.bodyFields['roleId'], ww.uid);
+          expect(r.bodyFields['serverId'], ww.region);
+          if (r.url.path.endsWith('refreshData')) {
+            expect(r.bodyFields,
+                {'gameId': '3', 'serverId': ww.region, 'roleId': ww.uid});
+            refreshed = true;
+            return reply(null);
+          }
+          return reply({
+            'roleId': ww.uid,
+            'serverId': ww.region,
+            'energyData': {
+              'cur': refreshed ? 1 : 52,
+              'total': 240,
+              'refreshTimeStamp': now
+                      .add(const Duration(hours: 23, minutes: 54))
+                      .millisecondsSinceEpoch ~/
+                  1000
+            }
+          });
+        }));
+    addTearDown(client.close);
+    final note = await client.daily(kuroAccount, ww);
+    expect(note.energy, 1);
+    expect(note.recoverySeconds, 86040);
+    expect(note.remainingAt(now.add(const Duration(minutes: 10)))?.inSeconds,
+        85440);
+    expect(paths, [
+      '/aki/roleBox/requestToken',
+      '/aki/roleBox/akiBox/refreshData',
+      '/gamer/widget/game3/getData'
+    ]);
+  });
+  test(
+      'Failed Wuthering Waves refresh never falls back to reading stale widget data',
+      () async {
+    final paths = <String>[];
+    final client = KuroClient(transport: MockClient((r) async {
+      paths.add(r.url.path);
+      if (r.url.path.endsWith('requestToken')) {
+        return reply({'accessToken': 'synthetic-data-token'});
+      }
+      return reply(null, code: 500);
+    }));
+    addTearDown(client.close);
+    await expectLater(
+        client.daily(kuroAccount, ww), throwsA(isA<MiyousheException>()));
+    expect(paths,
+        ['/aki/roleBox/requestToken', '/aki/roleBox/akiBox/refreshData']);
+  });
+  test(
+      'Wuthering Waves recovery handles seconds, milliseconds, zero energy and full capacity',
+      () {
+    final now = DateTime.utc(2026, 10, 17, 7);
+    DailyNote parse(int cur, Object? deadline) => DailyNote.parse(
+        Game.wutheringWaves,
+        {
+          'energyData': {'cur': cur, 'total': 240, 'refreshTimeStamp': deadline}
+        },
+        now);
+    final end = now.add(const Duration(hours: 24));
+    expect(parse(0, end.millisecondsSinceEpoch ~/ 1000).recoverySeconds, 86400);
+    expect(parse(0, end.millisecondsSinceEpoch).recoverySeconds, 86400);
+    expect(parse(240, null).recoverySeconds, 0);
+    for (final value in [
+      null,
+      0,
+      3600,
+      (now.millisecondsSinceEpoch ~/ 1000) - 1
+    ]) {
+      expect(parse(1, value).recoverySeconds, isNull);
+    }
+  });
+  test('Wuthering Waves does not display another returned role', () async {
+    final client = KuroClient(transport: MockClient((r) async {
+      if (r.url.path.endsWith('requestToken')) {
+        return reply({'accessToken': 'synthetic-data-token'});
+      }
+      if (r.url.path.endsWith('refreshData')) return reply(null);
+      return reply({
+        'roleId': 'other-role',
+        'energyData': {'cur': 52, 'total': 240}
+      });
+    }));
+    addTearDown(client.close);
+    await expectLater(
+        client.daily(kuroAccount, ww), throwsA(isA<MiyousheException>()));
   });
   test('PGR uses serum and activity data without a Wuthering Waves data token',
       () async {
