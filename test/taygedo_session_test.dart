@@ -165,6 +165,8 @@ void main() {
     await state.initialize();
     await tester.pumpWidget(
         MaterialApp(theme: appTheme(), home: TaygedoLoginPage(state)));
+    await tester.tap(find.text('高级导入'));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).at(0), 'old-refresh');
     await tester.enterText(find.byType(TextField).at(1), '7');
     await tester.enterText(find.byType(TextField).at(2), 'original-device');
@@ -354,7 +356,7 @@ void main() {
 
   for (final dark in [false, true]) {
     testWidgets(
-        'Session import is default; SMS requires acknowledgment, dark=$dark',
+        'SMS is default and requires acknowledgment; advanced import stays available, dark=$dark',
         (tester) async {
       tester.view.physicalSize = const Size(390, 950);
       tester.view.devicePixelRatio = 1;
@@ -364,6 +366,15 @@ void main() {
       addTearDown(state.dispose);
       await tester.pumpWidget(MaterialApp(
           theme: appTheme(dark: dark), home: TaygedoLoginPage(state)));
+      expect(find.text('社区刷新令牌（refreshToken）'), findsNothing);
+      expect(find.text('发送验证码'), findsOneWidget);
+      expect(
+          tester
+              .widget<TextButton>(find.widgetWithText(TextButton, '发送验证码'))
+              .onPressed,
+          isNull);
+      await tester.tap(find.text('高级导入'));
+      await tester.pumpAndSettle();
       expect(find.text('社区刷新令牌（refreshToken）'), findsOneWidget);
       expect(find.text('发送验证码'), findsNothing);
       expect(
