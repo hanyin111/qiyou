@@ -25,6 +25,14 @@
 
 主应用 `app.qiyou.qiyou` 和扩展 `app.qiyou.qiyou.QiyouWidget` 都启用 App Group `group.app.qiyou.qiyou`。正式安装需要在自己的 Apple Developer 团队中注册这两个标识及共享组，两个 target 使用同一团队并包含对应授权描述文件。更换 bundle ID 时同步修改两个 entitlements、共享 Swift 常量以及 target 配置中的标识。GitHub Actions 输出未签名 app，不能代替真机签名配置。参照 [Apple App Groups 配置](https://developer.apple.com/documentation/xcode/configuring-app-groups)。
 
+### SideStore 安装
+
+部分侧载签名版本会把原始 `CFBundleDisplayName` 用作 Apple 开发者门户的注册名称。原 0.1.14 包使用中文“栖游”，真机反馈 `SideSign.DeveloperPortalError 10`、`An invalid value '栖游' was provided for the parameter 'appIdName'`；这条提示针对注册名称，不足以判断 bundle ID 被占用。现将主应用和扩展的默认名称分别设为 `Qiyou`、`Qiyou Widget`，中文通过 `zh-Hans.lproj/InfoPlist.strings` 本地化；两个 bundle ID 保持不变。参照 [SideSign 原始 plist 读名规则](https://github.com/SideStore/SideSign/blob/main/Sources/Models/InfoPlistParser.swift)、[AltStore 同类非 ASCII 注册错误](https://faq.altstore.io/altstore-classic/error-codes)及 [Apple 显示名称本地化规则](https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html#//apple_ref/doc/uid/TP40009249-SW9)。
+
+安装时的 extension 指 `QiyouWidget.appex`，就是汇总桌面小组件，需要独立的 App ID。主应用加此扩展共两个 App ID；移除扩展后没有桌面小组件。免费侧载账户通常最多同时注册十个 App ID，每个一周到期，这与同时激活应用的数量限制是不同的计数，参照 [App IDs 说明](https://faq.altstore.io/altstore-classic/app-ids)。签名工具还需正确处理两者的共享组权限；名称修复不能替代签名后的共享区真机验收。
+
+2026-10-18 提供 `qiyou-ios-0.1.14-sidestore-unsigned.ipa`，沿用已构建的 0.1.14 / build 15，由 `scripts/repair_ios_sideload.py` 直接修正原未签名 IPA 的名称和本地化资源，没有重新运行云端编译。脚本拒绝修改已有主应用或扩展签名的包，逐文件核对其他内容与 Unix 属性均未改变。已验证 ZIP 完整性、默认名称 ASCII、两端中文资源、原 bundle ID/版本以及 Xcode 本地化资源引用；尚未在用户 SideStore 上验证安装结果。文件 SHA-256：`ed5bc7149f334a034597c7144808ca2bf9975df829dfb7a0bb6670953be2136e`。
+
 共享文件 `qiyou-widget-v1.json` 只包含游戏枚举、角色数量、汇总体力、签到状态和时间戳，原子写入并采用首次解锁后的文件保护。Cookie、访问/刷新令牌、设备标识、WebDAV 凭据与原始账号数据继续保存在原有安全存储，不写入共享组。小组件设置与通知开关仅保存在本机，不随 WebDAV 同步，也不替其他设备请求权限。
 
 ## 验证

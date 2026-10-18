@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C37173EA034642598CEA0001 /* Runner InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C37173EA034642598CEA0007; };
+		C37173EA034642598CEA0002 /* Widget InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C37173EA034642598CEA0008; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
@@ -76,6 +78,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		C37173EA034642598CEA0003 /* Runner English name */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = "Runner/en.lproj/InfoPlist.strings"; sourceTree = SOURCE_ROOT; };
+		C37173EA034642598CEA0004 /* Runner Chinese name */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "Runner/zh-Hans.lproj/InfoPlist.strings"; sourceTree = SOURCE_ROOT; };
+		C37173EA034642598CEA0005 /* Widget English name */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = "QiyouWidget/en.lproj/InfoPlist.strings"; sourceTree = SOURCE_ROOT; };
+		C37173EA034642598CEA0006 /* Widget Chinese name */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "QiyouWidget/zh-Hans.lproj/InfoPlist.strings"; sourceTree = SOURCE_ROOT; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
@@ -156,6 +162,7 @@
 			isa = PBXGroup;
 			children = (
 				9740EEB11CF90186004384FC /* Flutter */,
+				C37173EA034642598CEA0008 /* Widget InfoPlist.strings */,
 				B66C9639510EA1612BCE9B5D /* iOS Companion */,
 				BE2591C89E3801A170F7F6D1 /* Widget Preview Tests */,
 				97C146F01CF9000F007C117D /* Runner */,
@@ -179,6 +186,7 @@
 		97C146F01CF9000F007C117D /* Runner */ = {
 			isa = PBXGroup;
 			children = (
+				C37173EA034642598CEA0007 /* InfoPlist.strings */,
 				97C146FA1CF9000F007C117D /* Main.storyboard */,
 				97C146FD1CF9000F007C117D /* Assets.xcassets */,
 				97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */,
@@ -270,6 +278,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				"zh-Hans",
 				Base,
 			);
 			mainGroup = 97C146E51CF9000F007C117D;
@@ -301,6 +310,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C37173EA034642598CEA0001 /* Runner InfoPlist.strings in Resources */,
 				97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */,
 				3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
@@ -308,7 +318,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		C20E3D4A02275DA1D3A14CE9 /* Widget Resources */ = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (90F663E7765B0206A9EBA7CA,C017879117B4BEB0FD0504ED,4688CD119987CFFEBBF60F12,8B8F29A449FBFEA576E6B5BF,9659A93CD07BE475BC26379F,340B0962B3AB1109A6AC30E0,8579834636F266EF0B9B0BC9,FC05538F6FFFA8DBF53DDF3A,566DA25D263AB88849C270ED,165C2E3FC5C442E2C96F130A); runOnlyForDeploymentPostprocessing = 0; };
+		C20E3D4A02275DA1D3A14CE9 /* Widget Resources */ = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (C37173EA034642598CEA0002,90F663E7765B0206A9EBA7CA,C017879117B4BEB0FD0504ED,4688CD119987CFFEBBF60F12,8B8F29A449FBFEA576E6B5BF,9659A93CD07BE475BC26379F,340B0962B3AB1109A6AC30E0,8579834636F266EF0B9B0BC9,FC05538F6FFFA8DBF53DDF3A,566DA25D263AB88849C270ED,165C2E3FC5C442E2C96F130A); runOnlyForDeploymentPostprocessing = 0; };
 		165AE7725E8017C3B18BD179 /* Preview Resources */ = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (1D60AAD29A37CF59C0826C1A,3CE3270B2C718E3D143CAA07,2FE4B1440ACBF766F14D63E1,7CD524899A74E1B4327EFD18,97E82CC0BFE8281A3973E3C3,1ABE3AF526E7A42E29F121D9,D003A3C04FFD0D4130CD0C85,5AB7CCB2BF74D3717BA8752B,71D4BC08044C08D0C36B3FE3,3DD736989AA7BA6817A89A87); runOnlyForDeploymentPostprocessing = 0; };
 		9AFB1D3E1393B72A8AE5C8C8 /* PreviewTests Resources */ = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
@@ -385,6 +395,8 @@
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
+		C37173EA034642598CEA0007 /* Runner InfoPlist.strings */ = {isa = PBXVariantGroup; children = (C37173EA034642598CEA0003,C37173EA034642598CEA0004); name = InfoPlist.strings; sourceTree = "<group>"; };
+		C37173EA034642598CEA0008 /* Widget InfoPlist.strings */ = {isa = PBXVariantGroup; children = (C37173EA034642598CEA0005,C37173EA034642598CEA0006); name = InfoPlist.strings; sourceTree = "<group>"; };
 		97C146FA1CF9000F007C117D /* Main.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
