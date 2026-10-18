@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-18",
+  "version": "0.1.17+18",
+  "source_commit": "b6b727a",
+  "workflow": "https://github.com/hanyin111/qiyou/actions/runs/39137236814",
+  "workflow_conclusion": "success",
+  "flutter_tests": 137,
+  "swift_core_tests": 7,
+  "native_simulator_tests": 6,
+  "local_browser_checks": 5,
+  "real_public_sdk_render_on_about_blank": "passed_chromium_and_WKWebView",
+  "native_blocked_sdk_tests": "passed_v3_v4",
+  "local_delayed_bridge_and_synthetic_result": "passed_v3_v4",
+  "all_required_platform_builds": "passed",
+  "harmony_build": "not_run",
+  "existing_miyoushe_note_verification_user_confirmed": true,
+  "iphone_real_sms_login_new_version_verified": false,
+  "iphone_widget_shared_group_user_result": "not_provided",
+  "agent_uses_real_credentials": false,
+  "agent_submits_real_sms_login_checkin_or_captcha": false,
+  "package": {
+    "name": "qiyou-ios-0.1.17-unsigned.ipa",
+    "bytes": 39860363,
+    "sha256": "95cf8074f9396db978c1998e58bf8141f987e3958e262dc6f547f4fc218502d6",
+    "zip_integrity": true,
+    "bundle_ids_preserved": true,
+    "app_and_widget_group_entitlements": true,
+    "ad_hoc_signature_only": true,
+    "requires_personal_resigning": true,
+    "test_host_embedded": false
+  }
+}
