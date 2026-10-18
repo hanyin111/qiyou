@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-18",
+  "version": "0.1.16+17",
+  "source_commit": "009ab29",
+  "workflow": "https://github.com/hanyin111/qiyou/actions/runs/39133097996",
+  "workflow_conclusion": "success",
+  "dart_tests": 136,
+  "swift_core_tests": 7,
+  "native_simulator_tests": 4,
+  "native_sms_mock_protocols": "passed",
+  "native_sms_narrow_keyboard_layouts": "passed",
+  "resigned_group_profile_parsing": "passed",
+  "release_build": "passed",
+  "android_windows_web_builds": "passed",
+  "full_flutter_simulator_build": "not_repeated",
+  "harmony_build": "not_run",
+  "package": {
+    "name": "qiyou-ios-0.1.16-unsigned.ipa",
+    "bytes": 39858327,
+    "sha256": "b6b4e39d4cb941f1b8f4db619d46e4d4187555ec271073460b6a2337848628e7",
+    "app_and_widget_group_entitlements": true,
+    "shared_group": "group.app.qiyou.qiyou",
+    "ad_hoc_signature_only": true,
+    "requires_personal_resigning": true,
+    "zip_integrity": true,
+    "test_host_embedded": false
+  },
+  "previous_failed_runs": [
+    {"id": "39132211949", "reason": "Old tests expected session import as default"},
+    {"id": "39132448112", "reason": "plistlib.load required a seekable stream on Python 3.14"}
+  ],
+  "uses_real_credentials": false,
+  "performs_real_sms_login_or_checkin": false,
+  "iphone_resigned_shared_group_verified": false,
+  "iphone_real_authentication_verified": false
+}
