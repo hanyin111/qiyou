@@ -16,6 +16,29 @@ bool get supportsOfficialLogin =>
     const {TargetPlatform.windows, TargetPlatform.android, TargetPlatform.iOS}
         .contains(defaultTargetPlatform);
 
+const officialDesktopUserAgent =
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+    'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15';
+
+InAppWebViewSettings officialLoginSettings({TargetPlatform? platform}) {
+  final desktopOnIos =
+      (platform ?? defaultTargetPlatform) == TargetPlatform.iOS;
+  return InAppWebViewSettings(
+    incognito: true,
+    userAgent: desktopOnIos ? officialDesktopUserAgent : null,
+    preferredContentMode: desktopOnIos
+        ? UserPreferredContentMode.DESKTOP
+        : UserPreferredContentMode.RECOMMENDED,
+    javaScriptEnabled: true,
+    useShouldOverrideUrlLoading: true,
+    isInspectable: false,
+    allowFileAccess: false,
+    allowContentAccess: false,
+    saveFormData: false,
+    supportMultipleWindows: false,
+  );
+}
+
 bool isOfficialLoginUrl(Uri? url, {Community community = Community.miyoushe}) =>
     url != null &&
     url.scheme == 'https' &&
@@ -164,16 +187,7 @@ class _OfficialLoginPageState extends State<OfficialLoginPage> {
                   ])
                 : null,
             initialUrlRequest: URLRequest(url: WebUri(startUrl)),
-            initialSettings: InAppWebViewSettings(
-              incognito: true,
-              javaScriptEnabled: true,
-              useShouldOverrideUrlLoading: true,
-              isInspectable: false,
-              allowFileAccess: false,
-              allowContentAccess: false,
-              saveFormData: false,
-              supportMultipleWindows: false,
-            ),
+            initialSettings: officialLoginSettings(),
             onWebViewCreated: (value) {
               controller = value;
               if (widget.community == Community.kuro) {

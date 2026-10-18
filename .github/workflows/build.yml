@@ -72,18 +72,22 @@ jobs:
       - run: flutter pub get
       - name: Test native snapshot and notification planning
         run: swift test --package-path ios/CompanionCore
-      - run: plutil -lint ios/Runner.xcodeproj/project.pbxproj ios/Runner/Runner.entitlements ios/QiyouWidget/Info.plist ios/QiyouWidget/QiyouWidget.entitlements
+      - run: plutil -lint ios/Runner.xcodeproj/project.pbxproj ios/Runner/Runner.entitlements ios/Runner/Info.plist ios/QiyouWidget/Info.plist ios/QiyouWidget/QiyouWidget.entitlements ios/Runner/en.lproj/InfoPlist.strings ios/Runner/zh-Hans.lproj/InfoPlist.strings ios/QiyouWidget/en.lproj/InfoPlist.strings ios/QiyouWidget/zh-Hans.lproj/InfoPlist.strings
       - run: flutter build ios --release --no-codesign
       - name: Verify embedded widget
         run: |
           test -d build/ios/iphoneos/Runner.app/PlugIns/QiyouWidget.appex
           test -f build/ios/iphoneos/Runner.app/PlugIns/QiyouWidget.appex/genshin.png
           test -f build/ios/iphoneos/Runner.app/PlugIns/QiyouWidget.appex/HarmonyOS_Sans_SC_Regular.ttf
-      - run: ditto -c -k --sequesterRsrc --keepParent build/ios/iphoneos/Runner.app qiyou-ios-unsigned.zip
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p build/ios/unsigned/Payload
+          cp -R build/ios/iphoneos/Runner.app build/ios/unsigned/Payload/
+          ditto -c -k --norsrc --keepParent build/ios/unsigned/Payload qiyou-ios-unsigned.ipa
       - uses: actions/upload-artifact@v4
         with:
           name: qiyou-ios-unsigned
-          path: qiyou-ios-unsigned.zip
+          path: qiyou-ios-unsigned.ipa
           if-no-files-found: error
       - run: flutter build ios --simulator --debug
       - name: Select iPhone simulator
@@ -97,7 +101,7 @@ jobs:
           xcrun simctl bootstatus "$QIYOU_IOS_SIMULATOR" -b
           xcrun simctl spawn "$QIYOU_IOS_SIMULATOR" log stream --level info --style compact --predicate 'process == "Runner" OR process == "WidgetPreviewHost" OR process == "testmanagerd"' > build/ios-simulator.log 2>&1 &
           echo $! > build/ios-simulator-log.pid
-      - name: Test and render native widgets
+      - name: Test private browser cookies and render native widgets
         timeout-minutes: 10
         run: xcodebuild test -workspace ios/Runner.xcworkspace -scheme WidgetPreviewHost -configuration Debug -destination "platform=iOS Simulator,id=$QIYOU_IOS_SIMULATOR" -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 -test-timeouts-enabled YES -default-test-execution-time-allowance 120 -maximum-test-execution-time-allowance 180 -resultBundlePath build/ios-widget-tests.xcresult CODE_SIGNING_ALLOWED=NO
       - name: Collect widget screenshots

@@ -57,7 +57,7 @@ class CommunityHttp {
           // Explicit developer opt-in only. No header values, role IDs, raw
           // responses or credentials enter the local diagnostic.
           await writeVerificationDiagnostic({
-            'version': '0.1.14',
+            'version': '0.1.15',
             'community': 'kuro',
             'stage': path,
             'code': code,

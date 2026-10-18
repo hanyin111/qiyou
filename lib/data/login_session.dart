@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'ios_browser_session.dart';
 
 const officialCookieOrigins = [
   'https://user.mihoyo.com/',
@@ -11,6 +12,11 @@ Future<Map<String, String>> readSessionCookies(
     InAppWebViewController controller,
     {List<String> urls = officialCookieOrigins}) async {
   final values = <String, String>{};
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+    return readIosBrowserCookies(
+        evaluate: (source) => controller.evaluateJavascript(source: source),
+        urls: urls);
+  }
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
     // Plugin 0.6's CookieManager ignores webViewController and uses a helper
     // WebView with the default profile. Read this actual private WebView instead.

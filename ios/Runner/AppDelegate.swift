@@ -6,6 +6,10 @@ import UserNotifications
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private let companion = IosCompanion()
+  private let browserSession = BrowserCookieBridge(roots: {
+    UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+      .flatMap { $0.windows }.map { $0 as UIView }
+  })
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -29,6 +33,21 @@ import UserNotifications
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "QiyouDevice")!
+    let browserChannel = FlutterMethodChannel(name: "app.qiyou/browser-session", binaryMessenger: registrar.messenger())
+    browserChannel.setMethodCallHandler { [weak self] call, result in
+      guard call.method == "readCookies" else { result(FlutterMethodNotImplemented); return }
+      guard let arguments = call.arguments as? [String: Any],
+            let nonce = arguments["nonce"] as? String,
+            let urls = arguments["urls"] as? [String], let self = self else {
+        result(FlutterError(code: "BROWSER_SESSION", message: "当前登录页面不可用", details: nil)); return
+      }
+      self.browserSession.read(nonce: nonce, urls: urls) { response in
+        switch response {
+        case .success(let cookies): result(cookies)
+        case .failure: result(FlutterError(code: "BROWSER_SESSION", message: "无法读取当前官方登录会话，请等待页面加载完成后重试。", details: nil))
+        }
+      }
+    }
     let companionChannel = FlutterMethodChannel(name: "app.qiyou/companion", binaryMessenger: registrar.messenger())
     companionChannel.setMethodCallHandler { [weak self] call, result in
       self?.companion.handle(call, result: result)

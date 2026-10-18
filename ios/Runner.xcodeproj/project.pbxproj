@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C37173EA034642598CEA0101 /* Runner BrowserCookieBridge.swift */ = {isa = PBXBuildFile; fileRef = C37173EA034642598CEA0104; };
+		C37173EA034642598CEA0102 /* Preview BrowserCookieBridge.swift */ = {isa = PBXBuildFile; fileRef = C37173EA034642598CEA0104; };
+		C37173EA034642598CEA0103 /* PreviewTests BrowserCookieTests.swift */ = {isa = PBXBuildFile; fileRef = C37173EA034642598CEA0105; };
 		C37173EA034642598CEA0001 /* Runner InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C37173EA034642598CEA0007; };
 		C37173EA034642598CEA0002 /* Widget InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C37173EA034642598CEA0008; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
@@ -78,6 +81,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		C37173EA034642598CEA0104 /* BrowserCookieBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Runner/BrowserCookieBridge.swift"; sourceTree = SOURCE_ROOT; };
+		C37173EA034642598CEA0105 /* BrowserCookieTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WidgetPreviewHost/BrowserCookieTests.swift"; sourceTree = SOURCE_ROOT; };
 		C37173EA034642598CEA0003 /* Runner English name */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = "Runner/en.lproj/InfoPlist.strings"; sourceTree = SOURCE_ROOT; };
 		C37173EA034642598CEA0004 /* Runner Chinese name */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "Runner/zh-Hans.lproj/InfoPlist.strings"; sourceTree = SOURCE_ROOT; };
 		C37173EA034642598CEA0005 /* Widget English name */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = "QiyouWidget/en.lproj/InfoPlist.strings"; sourceTree = SOURCE_ROOT; };
@@ -162,6 +167,8 @@
 			isa = PBXGroup;
 			children = (
 				9740EEB11CF90186004384FC /* Flutter */,
+				C37173EA034642598CEA0104 /* BrowserCookieBridge.swift */,
+				C37173EA034642598CEA0105 /* BrowserCookieTests.swift */,
 				C37173EA034642598CEA0008 /* Widget InfoPlist.strings */,
 				B66C9639510EA1612BCE9B5D /* iOS Companion */,
 				BE2591C89E3801A170F7F6D1 /* Widget Preview Tests */,
@@ -370,6 +377,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C37173EA034642598CEA0101 /* BrowserCookieBridge.swift */,
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				E83DF5C12FEB847E19EB4C78 /* IosCompanion.swift in Sources */,
 				4473C374865304F60A449E87 /* WidgetSnapshot.swift in Sources */,
@@ -380,8 +388,8 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		30EF585B905F57BE5C0898E0 /* Widget Sources */ = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (2EB7C13D7AEE1A01CC863193,37524D4EFB035A6B0D992326,BB2A8757AE065E8182843B92); runOnlyForDeploymentPostprocessing = 0; };
-		19DD9AD7E9FC0802D6868D11 /* Preview Sources */ = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (E35842C00DFBB380040DCB0A,64EB662E0B1A56F327D610EA,FD72A71E6F17BACFCB7C6667); runOnlyForDeploymentPostprocessing = 0; };
-		7A9ADFE7F460B8AC88B702C4 /* PreviewTests Sources */ = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (F9684D51FC8DE8F2328902BA); runOnlyForDeploymentPostprocessing = 0; };
+		19DD9AD7E9FC0802D6868D11 /* Preview Sources */ = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C37173EA034642598CEA0102,E35842C00DFBB380040DCB0A,64EB662E0B1A56F327D610EA,FD72A71E6F17BACFCB7C6667); runOnlyForDeploymentPostprocessing = 0; };
+		7A9ADFE7F460B8AC88B702C4 /* PreviewTests Sources */ = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C37173EA034642598CEA0103,F9684D51FC8DE8F2328902BA); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */

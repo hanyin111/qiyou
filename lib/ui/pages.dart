@@ -342,7 +342,7 @@ class SettingsPage extends StatelessWidget {
           Brand(compact: true),
           Spacer(),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('0.1.14',
+            Text('0.1.15',
                 style: TextStyle(
                     fontSize: 10,
                     letterSpacing: 1,

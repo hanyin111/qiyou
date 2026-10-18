@@ -229,7 +229,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         Spacer(),
         Padding(
             padding: EdgeInsets.only(left: 15),
-            child: Text('v0.1.14',
+            child: Text('v0.1.15',
                 style:
                     TextStyle(fontSize: 10, color: context.palette.secondary))),
       ]));
