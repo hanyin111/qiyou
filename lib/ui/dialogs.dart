@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../data/taygedo_client.dart';
 import '../app_state.dart';
 import '../domain/models.dart';
 import '../data/miyoushe_client.dart';
@@ -236,7 +237,7 @@ class _ConnectDialogState extends State<ConnectDialog> {
                                       },
                                 icon: Icon(Icons.login, size: 18),
                                 label: Text(community == Community.taygedo
-                                    ? '手机号登录'
+                                    ? '连接塔吉多'
                                     : '打开官方页面登录'))),
                         SizedBox(height: 20),
                       ],
@@ -347,6 +348,9 @@ class _ConnectDialogState extends State<ConnectDialog> {
                             } catch (failure) {
                               if (mounted) {
                                 setState(() {
+                                  if (failure is TaygedoConnectFailure) {
+                                    input.text = failure.credential;
+                                  }
                                   error = failure is MiyousheException
                                       ? failure.message
                                       : '连接未完成，请检查本机存储和网络后重试。';

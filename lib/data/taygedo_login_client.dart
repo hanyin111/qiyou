@@ -195,6 +195,7 @@ class TaygedoLoginClient {
     final data = object(community['data']);
     return jsonEncode({
       'token': _token(data['accessToken'], '塔吉多未返回游戏访问令牌。'),
+      'refreshToken': _token(data['refreshToken'], '塔吉多未返回社区续期令牌，暂不保存无法续期的会话。'),
       'uid': requiredText(data['uid'], '塔吉多未返回账号编号。'),
       'did': deviceId
     });

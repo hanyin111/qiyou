@@ -7,3 +7,8 @@ abstract interface class CommunityClient {
   Future<SignStatus> sign(Account account, Role role);
   void close();
 }
+
+// Community renewal is separate from initial SDK login and game write actions.
+abstract interface class RenewableCommunityClient implements CommunityClient {
+  Future<Account> renew(Account account);
+}

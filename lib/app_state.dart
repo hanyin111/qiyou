@@ -47,6 +47,55 @@ class AppState extends ChangeNotifier {
   String taskDay = chinaDay();
   String signDay = chinaDay();
   DateTime? lastRefresh;
+  bool _pendingCredentialSave = false;
+
+  Future<void> _saveRotatedSession() async {
+    try {
+      await _persist();
+    } catch (_) {
+      throw const MiyousheException(
+          ApiFailure.protocol, '会话已续期但未能加密保存，请保留窗口后重试；未执行后续请求。');
+    }
+  }
+
+  // Only read operations may be retried. In particular, never replay a sign POST
+  // when its response or subsequent confirmation is lost.
+  Future<T> _readCommunity<T>(
+      String accountId,
+      Future<T> Function(CommunityClient, Account) read,
+      Set<String> renewed) async {
+    if (_pendingCredentialSave) await _saveRotatedSession();
+    Account current() => accounts.firstWhere((a) => a.id == accountId);
+    final account = current();
+    final communityClient = _clientFor(account.community);
+    try {
+      return await read(communityClient, account);
+    } on MiyousheException catch (error) {
+      if (error.kind != ApiFailure.expired ||
+          account.community != Community.taygedo ||
+          communityClient is! RenewableCommunityClient) {
+        rethrow;
+      }
+      if (account.refreshToken == null || account.refreshToken!.isEmpty) {
+        throw const MiyousheException(
+            ApiFailure.expired, '此旧会话未保存社区续期凭据，请在账号页导入已有塔吉多会话。不会自动执行短信登录。');
+      }
+      if (!renewed.add(accountId)) rethrow;
+      final next = await communityClient.renew(current());
+      if (next.id != account.id ||
+          next.community != account.community ||
+          next.deviceId != account.deviceId) {
+        throw const MiyousheException(
+            ApiFailure.protocol, '社区续期返回的账号或设备不一致，已停止。');
+      }
+      // The server may have already invalidated the old rotating refresh token.
+      // Retain the new session in memory even if the OS vault write fails.
+      accounts[accounts.indexWhere((a) => a.id == accountId)] = next;
+      _pendingCredentialSave = true;
+      await _saveRotatedSession();
+      return read(communityClient, current());
+    }
+  }
 
   List<GameEntry> get visibleEntries => entries
       .where((entry) =>
@@ -254,6 +303,7 @@ class AppState extends ChangeNotifier {
         account = Account(
             id: account.id,
             cookie: account.cookie,
+            refreshToken: account.refreshToken,
             deviceId: previous.deviceId,
             roles: account.roles,
             community: community,
@@ -305,22 +355,25 @@ class AppState extends ChangeNotifier {
         _record('演示数据已刷新');
         // Keep the original stamina timestamp: refresh must not invent regenerated data.
       } else {
+        final renewed = <String>{};
         for (final entry in visibleEntries) {
-          final account =
-              accounts.firstWhere((account) => account.id == entry.accountId);
           entry.noteError = null;
           entry.signError = null;
           entry.noteNeedsVerification = false;
           try {
-            entry.note =
-                await _clientFor(account.community).daily(account, entry.role);
+            entry.note = await _readCommunity(
+                entry.accountId,
+                (client, account) => client.daily(account, entry.role),
+                renewed);
           } on MiyousheException catch (error) {
             entry.noteError = error.message;
             entry.noteNeedsVerification = error.kind == ApiFailure.verification;
           }
           try {
-            entry.signStatus = await _clientFor(account.community)
-                .signInfo(account, entry.role);
+            entry.signStatus = await _readCommunity(
+                entry.accountId,
+                (client, account) => client.signInfo(account, entry.role),
+                renewed);
           } on MiyousheException catch (error) {
             entry.signStatus = _status(error);
             entry.signError = error.message;
@@ -352,6 +405,7 @@ class AppState extends ChangeNotifier {
     busy = true;
     notifyListeners();
     var done = 0;
+    final renewed = <String>{};
     try {
       for (final entry in pending) {
         if (demo) {
@@ -360,10 +414,19 @@ class AppState extends ChangeNotifier {
           entry.signError = null;
         } else {
           try {
-            final account =
+            if (_pendingCredentialSave) await _saveRotatedSession();
+            var account =
                 accounts.firstWhere((account) => account.id == entry.accountId);
-            entry.signStatus =
-                await _clientFor(account.community).sign(account, entry.role);
+            final preflight = account.community == Community.taygedo
+                ? await _readCommunity(
+                    entry.accountId,
+                    (client, current) => client.signInfo(current, entry.role),
+                    renewed)
+                : SignStatus.pending;
+            account = accounts.firstWhere((a) => a.id == entry.accountId);
+            entry.signStatus = preflight.isDone
+                ? preflight
+                : await _clientFor(account.community).sign(account, entry.role);
             entry.signError = null;
           } on MiyousheException catch (error) {
             entry.signStatus = _status(error);
@@ -451,8 +514,8 @@ class AppState extends ChangeNotifier {
         await client.verifyNote(account, entry.role, verification, proof);
         verified = true;
       }
-      final note =
-          await _clientFor(account.community).daily(account, entry.role);
+      final note = await _readCommunity(entry.accountId,
+          (client, current) => client.daily(current, entry.role), <String>{});
       if (note.energy == null || note.capacity == null || note.capacity! <= 0) {
         throw const MiyousheException(
             ApiFailure.protocol, '社区未返回完整体力数据，暂时无法同步。');
@@ -602,6 +665,7 @@ class AppState extends ChangeNotifier {
     busy = true;
     notifyListeners();
     try {
+      if (_pendingCredentialSave) await _saveRotatedSession();
       return await operation();
     } finally {
       busy = false;
@@ -670,24 +734,26 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _persist(
-          {List<Account>? accountOverride,
-          SyncContents? contentsOverride,
-          SyncConnection? syncOverride,
-          bool clearSync = false}) =>
-      bridge.write(jsonEncode({
-        'version': 1,
-        'accounts': (contentsOverride?.accounts ?? accountOverride ?? accounts)
-            .map((account) => account.toJson())
-            .toList(),
-        'hideUid': contentsOverride?.hideUid ?? hideUid,
-        'dark': contentsOverride?.dark ?? dark,
-        'taskDay': contentsOverride?.taskDay ?? taskDay,
-        'tasks': (contentsOverride?.tasks ?? (demo ? _savedTasks : tasks))
-            .map((task) => task.toJson())
-            .toList(),
-        if (!clearSync && (syncOverride ?? syncConnection) != null)
-          'syncConnection': (syncOverride ?? syncConnection)!.toJson(),
-      }));
+      {List<Account>? accountOverride,
+      SyncContents? contentsOverride,
+      SyncConnection? syncOverride,
+      bool clearSync = false}) async {
+    await bridge.write(jsonEncode({
+      'version': 1,
+      'accounts': (contentsOverride?.accounts ?? accountOverride ?? accounts)
+          .map((account) => account.toJson())
+          .toList(),
+      'hideUid': contentsOverride?.hideUid ?? hideUid,
+      'dark': contentsOverride?.dark ?? dark,
+      'taskDay': contentsOverride?.taskDay ?? taskDay,
+      'tasks': (contentsOverride?.tasks ?? (demo ? _savedTasks : tasks))
+          .map((task) => task.toJson())
+          .toList(),
+      if (!clearSync && (syncOverride ?? syncConnection) != null)
+        'syncConnection': (syncOverride ?? syncConnection)!.toJson(),
+    }));
+    _pendingCredentialSave = false;
+  }
 
   void _record(String text, {bool success = true}) {
     activities.insert(0, Activity(text, demo: demo, success: success));

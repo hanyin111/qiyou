@@ -62,7 +62,7 @@ void main() {
             'code': 0,
             'data': {
               'accessToken': 'community-token',
-              'refreshToken': 'not-persisted',
+              'refreshToken': 'community-refresh',
               'uid': '7'
             }
           });
@@ -79,13 +79,16 @@ void main() {
       'appId': '10551'
     });
     expect(requests[2].headers['ds'], isNotEmpty);
-    expect(jsonDecode(credential),
-        {'token': 'community-token', 'uid': '7', 'did': 'login-device'});
+    expect(jsonDecode(credential), {
+      'token': 'community-token',
+      'refreshToken': 'community-refresh',
+      'uid': '7',
+      'did': 'login-device'
+    });
     for (final sensitive in [
       '13800000000',
       '123456',
       'sdk-token',
-      'not-persisted'
     ]) {
       expect(credential, isNot(contains(sensitive)));
     }
@@ -106,6 +109,29 @@ void main() {
             .having(
                 (e) => e.message.contains('123456'), 'OTP redacted', isFalse)));
     expect(calls, 1);
+  });
+  test('A newly logged-in community session must include a refresh token',
+      () async {
+    final client = TaygedoLoginClient(transport: MockClient((r) async {
+      if (r.url.path.endsWith('/sms/new/login')) {
+        return envelope({
+          'code': 0,
+          'result': {'token': 'sdk-token', 'userId': '7'}
+        });
+      }
+      if (r.url.host == 'bbs-api.tajiduo.com') {
+        return envelope({
+          'code': 0,
+          'data': {'accessToken': 'access-only', 'uid': '7'}
+        });
+      }
+      return envelope({'code': 0});
+    }));
+    addTearDown(client.close);
+    await expectLater(
+        client.login('13800000000', '123456'),
+        throwsA(isA<MiyousheException>().having(
+            (e) => e.message, 'missing refresh token', contains('续期令牌'))));
   });
   test(
       'Kuro native session bridge rejects unrelated messages and omits OTP fields',
@@ -153,10 +179,16 @@ void main() {
     }));
     addTearDown(client.close);
     final account = await client.connect(
-        jsonEncode({'token': 'app-token', 'uid': '7', 'did': 'login-device'}),
+        jsonEncode({
+          'token': 'app-token',
+          'refreshToken': 'app-refresh',
+          'uid': '7',
+          'did': 'login-device'
+        }),
         existingDeviceId: 'old-web-device');
     expect(account.deviceId, 'login-device');
     expect(account.recordHeaders['session-device'], 'login-device');
     expect(account.community, Community.taygedo);
+    expect(account.refreshToken, 'app-refresh');
   });
 }

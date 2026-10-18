@@ -28,7 +28,7 @@ class CommunityHttp {
         final response = await transport.send(request);
         if (community == Community.taygedo && response.statusCode == 402) {
           throw const MiyousheException(
-              ApiFailure.expired, '塔吉多游戏服务未接受当前会话（HTTP 402），请重新连接并使用手机号登录。',
+              ApiFailure.expired, '塔吉多会话已失效（HTTP 402），请检查社区续期凭据或导入有效会话。',
               code: 402);
         }
         if (response.statusCode == 401 || response.statusCode == 403) {
@@ -57,7 +57,7 @@ class CommunityHttp {
           // Explicit developer opt-in only. No header values, role IDs, raw
           // responses or credentials enter the local diagnostic.
           await writeVerificationDiagnostic({
-            'version': '0.1.11',
+            'version': '0.1.12',
             'community': 'kuro',
             'stage': path,
             'code': code,
@@ -160,7 +160,8 @@ Map<String, String> communityCredential(String input,
         'devcode',
         'did',
         'user-agent',
-        if (allowCookie) 'cookie'
+        if (allowCookie) 'cookie',
+        if (allowCookie) 'refreshToken'
       ]) {
         final value = json[key];
         if (value is String &&
@@ -176,7 +177,9 @@ Map<String, String> communityCredential(String input,
   } else {
     values['token'] = clean;
   }
-  if (values['token'] == null && (!allowCookie || values['cookie'] == null)) {
+  if (values['token'] == null &&
+      (!allowCookie ||
+          (values['cookie'] == null && values['refreshToken'] == null))) {
     throw const MiyousheException(
         ApiFailure.credentials, '未检测到登录令牌，请在官方页面重新登录。');
   }

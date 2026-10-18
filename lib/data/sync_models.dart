@@ -107,6 +107,11 @@ class SyncContents {
             a.cookie.isEmpty ||
             a.cookie.length > 64000 ||
             a.recordHeaders.length > 30 ||
+            (a.refreshToken != null &&
+                (a.community != Community.taygedo ||
+                    a.refreshToken!.isEmpty ||
+                    a.refreshToken!.length > 12000 ||
+                    RegExp(r'[\r\n\x00]').hasMatch(a.refreshToken!))) ||
             a.hiddenGames.any((g) => g.community != a.community) ||
             a.roles.any((r) => r.game.community != a.community) ||
             [

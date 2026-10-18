@@ -134,11 +134,13 @@ class Account {
       required this.roles,
       this.community = Community.miyoushe,
       this.recordHeaders = const {},
-      this.hiddenGames = const {}});
+      this.hiddenGames = const {},
+      this.refreshToken});
   final String id, cookie, deviceId;
   final List<Role> roles;
   final Map<String, String> recordHeaders;
   final Community community;
+  final String? refreshToken;
   final Set<Game> hiddenGames;
   Iterable<Role> get activeRoles =>
       roles.where((r) => !hiddenGames.contains(r.game));
@@ -151,6 +153,7 @@ class Account {
         'community': community.name,
         'recordHeaders': recordHeaders,
         'hiddenGames': hiddenGames.map((g) => g.name).toList(),
+        if (refreshToken != null) 'refreshToken': refreshToken,
         'roles': roles.map((role) => role.toJson()).toList()
       };
   factory Account.fromJson(Map<String, dynamic> json) => Account(
@@ -159,6 +162,7 @@ class Account {
       deviceId: json['deviceId'] as String,
       community:
           Community.values.byName(json['community'] as String? ?? 'miyoushe'),
+      refreshToken: json['refreshToken'] as String?,
       recordHeaders: object(json['recordHeaders'])
           .map((key, value) => MapEntry(key, '$value')),
       hiddenGames: (json['hiddenGames'] as List? ?? const [])
@@ -171,13 +175,15 @@ class Account {
           {String? cookie,
           String? deviceId,
           Map<String, String>? recordHeaders,
-          Set<Game>? hiddenGames}) =>
+          Set<Game>? hiddenGames,
+          String? refreshToken}) =>
       Account(
           id: id,
           cookie: cookie ?? this.cookie,
           deviceId: deviceId ?? this.deviceId,
           roles: roles,
           community: community,
+          refreshToken: refreshToken ?? this.refreshToken,
           recordHeaders: recordHeaders ?? this.recordHeaders,
           hiddenGames: hiddenGames ?? this.hiddenGames);
   // Deliberately keep credentials out of debug output and diagnostics.
