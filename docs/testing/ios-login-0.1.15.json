@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-18",
+  "version": "0.1.15+16",
+  "source_commit": "519caa2",
+  "workflow": "https://github.com/hanyin111/qiyou/actions/runs/39127890095",
+  "workflow_conclusion": "success",
+  "dart_analysis_and_regression": "passed",
+  "swift_core_tests": 6,
+  "native_simulator_tests": 4,
+  "private_http_only_cookie_isolation": "passed",
+  "cookie_domain_path_and_https_boundaries": "passed",
+  "release_and_simulator_builds": "passed",
+  "android_windows_web_builds": "passed",
+  "harmony_build": "not_run",
+  "package": {
+    "name": "qiyou-ios-0.1.15-unsigned.ipa",
+    "bytes": 39790317,
+    "sha256": "7110ea797f9b7d82252967c8641811efdc8ea9d157d5a028c67090322f7fb9fb",
+    "zip_integrity": true,
+    "ascii_registration_names": true,
+    "localized_chinese_names": true,
+    "widget_embedded": true,
+    "native_test_host_embedded": false,
+    "signed": false
+  },
+  "uses_real_credentials": false,
+  "performs_login_sms_or_checkin": false,
+  "iphone_real_login_verified": false,
+  "taygedo_changes": false
+}
