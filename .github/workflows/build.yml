@@ -78,7 +78,7 @@ jobs:
         run: |
           codesign --force --sign - --entitlements ios/QiyouWidget/QiyouWidget.entitlements build/ios/iphoneos/Runner.app/PlugIns/QiyouWidget.appex
           codesign --force --sign - --entitlements ios/Runner/Runner.entitlements build/ios/iphoneos/Runner.app
-          codesign --display --entitlements - --xml build/ios/iphoneos/Runner.app 2>/dev/null | python3 -c 'import plistlib,sys; p=plistlib.load(sys.stdin.buffer); assert p["com.apple.security.application-groups"] == ["group.app.qiyou.qiyou"]'
+          codesign --display --entitlements - --xml build/ios/iphoneos/Runner.app 2>/dev/null | python3 -c 'import plistlib,sys; p=plistlib.loads(sys.stdin.buffer.read()); assert p["com.apple.security.application-groups"] == ["group.app.qiyou.qiyou"]'
       - name: Verify embedded widget
         run: |
           test -d build/ios/iphoneos/Runner.app/PlugIns/QiyouWidget.appex
