@@ -1,6 +1,6 @@
 # iOS 汇总小组件与体力回满提醒
 
-0.1.13，2026-10-18。使用原生 WidgetKit + SwiftUI 小组件和 UserNotifications 本机通知。iOS 最低版本调整为 14；iOS 17 及以上适配小组件容器背景。Android、鸿蒙、Windows 的系统小组件与通知不在本次范围。
+0.1.14，2026-10-18。使用原生 WidgetKit + SwiftUI 小组件和 UserNotifications 本机通知。iOS 最低版本调整为 14；iOS 17 及以上适配小组件容器背景。Android、鸿蒙、Windows 的系统小组件与通知不在本次范围。
 
 ## 使用
 

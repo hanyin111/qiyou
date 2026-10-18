@@ -1,7 +1,7 @@
 name: qiyou
 description: "栖游：轻量的多游戏日常与体力管理。"
 publish_to: 'none'
-version: 0.1.13+14
+version: 0.1.14+15
 
 environment:
   sdk: '>=3.6.0 <4.0.0'

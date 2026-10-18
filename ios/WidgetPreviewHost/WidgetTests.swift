@@ -45,6 +45,7 @@ class WidgetTests: XCTestCase {
       ("small", .systemSmall, CGSize(width: 158, height: 158), 7),
       ("small-compact", .systemSmall, CGSize(width: 141, height: 141), 7),
       ("small-selected", .systemSmall, CGSize(width: 158, height: 158), 3),
+      ("small-one", .systemSmall, CGSize(width: 158, height: 158), 1),
       ("medium", .systemMedium, CGSize(width: 338, height: 158), 7),
       ("large", .systemLarge, CGSize(width: 338, height: 354), 7)]
     for (name, family, size, count) in layouts {
@@ -69,6 +70,7 @@ class WidgetTests: XCTestCase {
         let image: UIImage = UIGraphicsImageRenderer(size: size).image { _ in
           host.view.drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
         }
+        XCTAssertGreaterThan(colorfulPixels(image), 200, "Official icons must actually be visible in \(name)")
         let path = folder.appendingPathComponent("\(name)-\(dark ? "dark" : "light").png")
         let png: Data = try XCTUnwrap(image.pngData())
         try png.write(to: path)
@@ -78,6 +80,27 @@ class WidgetTests: XCTestCase {
         add(attachment)
         window.isHidden = true
       }
+    }
+  }
+
+  private func colorfulPixels(_ image: UIImage) -> Int {
+    guard let cg = image.cgImage else { return 0 }
+    let width = cg.width, height = cg.height
+    var pixels = [UInt8](repeating: 0, count: width * height * 4)
+    return pixels.withUnsafeMutableBytes { buffer in
+      guard let context = CGContext(data: buffer.baseAddress, width: width, height: height,
+        bitsPerComponent: 8, bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue)
+        else { return 0 }
+      context.draw(cg, in: CGRect(x: 0, y: 0, width: width, height: height))
+      let bytes = buffer.bindMemory(to: UInt8.self)
+      var colored = 0
+      for i in stride(from: 0, to: bytes.count, by: 4) {
+        let high = max(bytes[i], max(bytes[i + 1], bytes[i + 2]))
+        let low = min(bytes[i], min(bytes[i + 1], bytes[i + 2]))
+        if Int(high) - Int(low) > 30 && bytes[i + 3] > 200 { colored += 1 }
+      }
+      return colored
     }
   }
 }

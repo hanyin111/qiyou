@@ -32,7 +32,8 @@ struct QiyouWidgetView: View {
   private var small: Bool { family == .systemSmall }
   private var large: Bool { family == .systemLarge }
   private var relaxed: Bool { small && entry.snapshot.games.count <= 4 }
-  private var columns: Int { family == .systemMedium ? 3 : 2 }
+  private var single: Bool { small && entry.snapshot.games.count == 1 }
+  private var columns: Int { single ? 1 : family == .systemMedium ? 3 : 2 }
   var body: some View {
     GeometryReader { geometry in
       let compact = small && geometry.size.height < 120
@@ -76,9 +77,10 @@ struct QiyouWidgetView: View {
   private func cell(_ game: WidgetGameState, compact: Bool) -> some View {
     let fresh = game.isFresh(at: entry.date)
     let sign = entry.snapshot.sign(for: game, at: entry.date)
-    let icon: CGFloat = small ? relaxed ? 25 : compact ? 16 : 20 : large ? 34 : 26
-    return HStack(spacing: compact ? 4 : small ? 5 : 7) {
-      Image(game.game.rawValue, bundle: resources).resizable().scaledToFill()
+    let icon: CGFloat = small ? single ? 32 : relaxed ? 18 : compact ? 16 : 20 : large ? 34 : 26
+    return HStack(spacing: small ? relaxed || compact ? 4 : 5 : 7) {
+      Image(uiImage: UIImage(named: game.game.rawValue, in: resources, compatibleWith: nil) ?? UIImage())
+        .renderingMode(.original).resizable().scaledToFill()
         .frame(width: icon, height: icon)
         .clipShape(RoundedRectangle(cornerRadius: small ? 5 : 7))
         .overlay(
@@ -90,10 +92,11 @@ struct QiyouWidgetView: View {
         , alignment: .bottomTrailing)
       VStack(alignment: .leading, spacing: large ? 4 : 1) {
         if !small || relaxed {
-          Text(game.game.title).font(harmony(large ? 13 : relaxed ? 9 : 10, bold: true)).lineLimit(1)
+          Text(game.game.title).font(harmony(single ? 12 : large ? 13 : relaxed ? 9 : 10, bold: true))
+            .lineLimit(1).minimumScaleFactor(0.7)
         }
         Text(fresh ? "\(game.energy ?? 0)/\(game.capacity ?? 0)" : "—")
-          .font(harmony(small ? relaxed ? 12 : compact ? 9 : 10 : large ? 16 : 12, bold: true))
+          .font(harmony(single ? 20 : small ? relaxed ? 12 : compact ? 9 : 10 : large ? 16 : 12, bold: true))
           .lineLimit(1).minimumScaleFactor(0.7)
         if small && game.roleCount > 1 {
           Text(sign == .unknown ? "待刷新" : "\(game.signedRoles)/\(game.roleCount) 已签").font(harmony(6)).foregroundColor(.secondary)
