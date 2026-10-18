@@ -38,14 +38,9 @@ struct QiyouProvider: TimelineProvider {
 @main
 struct QiyouWidget: Widget {
   var body: some WidgetConfiguration {
-    if #available(iOSApplicationExtension 17.0, *) {
-      configuration.contentMarginsDisabled()
-    } else { configuration }
-  }
-  private var configuration: some WidgetConfiguration {
     StaticConfiguration(kind: CompanionConstants.kind, provider: QiyouProvider()) { entry in
       if #available(iOSApplicationExtension 17.0, *) {
-        QiyouWidgetView(entry: entry)
+        QiyouWidgetView(entry: entry, contentPadding: 0)
           .containerBackground(for: .widget) { Color(UIColor.systemBackground) }
       } else {
         QiyouWidgetView(entry: entry).background(Color(UIColor.systemBackground))

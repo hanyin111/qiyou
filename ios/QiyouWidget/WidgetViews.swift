@@ -26,6 +26,7 @@ struct QiyouWidgetView: View {
   @Environment(\.widgetFamily) var family
   let entry: QiyouEntry
   var resources: Bundle = .main
+  var contentPadding: CGFloat? = nil
   private var small: Bool { family == .systemSmall }
   private var large: Bool { family == .systemLarge }
   private var columns: Int { family == .systemMedium ? 3 : 2 }
@@ -64,7 +65,7 @@ struct QiyouWidgetView: View {
           }
         }.foregroundColor(.secondary).frame(height: small ? 10 : 12)
       }
-    }.padding(small ? 9 : 12)
+    }.padding(contentPadding ?? (small ? 9 : 12))
   }
 
   private func cell(_ game: WidgetGameState) -> some View {

@@ -48,9 +48,10 @@ class RunnerTests: XCTestCase {
       ("large", .systemLarge, CGSize(width: 338, height: 354))]
     for (name, family, size) in layouts {
       for dark in [false, true] {
-        let view = QiyouWidgetView(entry: QiyouEntry(date: now, snapshot: snapshot), resources: resources)
+        let view = QiyouWidgetView(entry: QiyouEntry(date: now, snapshot: snapshot), resources: resources, contentPadding: 0)
           .environment(\.widgetFamily, family).environment(\.colorScheme, dark ? .dark : .light)
-          .background(dark ? Color.black : Color.white).frame(width: size.width, height: size.height)
+          .padding(16).background(dark ? Color.black : Color.white)
+          .frame(width: size.width, height: size.height).ignoresSafeArea()
         let host = UIHostingController(rootView: view)
         let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
         let window = scene.map { UIWindow(windowScene: $0) } ?? UIWindow(frame: CGRect(origin: .zero, size: size))
