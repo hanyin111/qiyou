@@ -13,6 +13,7 @@ class RunnerTests: XCTestCase {
     var calendar = Calendar(identifier: .gregorian)
     calendar.timeZone = TimeZone(secondsFromGMT: 0)!
     var parts = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
+    parts.calendar = calendar
     parts.timeZone = calendar.timeZone
     let trigger = UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)
     let next = try XCTUnwrap(trigger.nextTriggerDate())
@@ -42,13 +43,17 @@ class RunnerTests: XCTestCase {
     let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
       .appendingPathComponent("widget-previews")
     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-    let layouts: [(String, WidgetFamily, CGSize)] = [
-      ("small", .systemSmall, CGSize(width: 158, height: 158)),
-      ("medium", .systemMedium, CGSize(width: 338, height: 158)),
-      ("large", .systemLarge, CGSize(width: 338, height: 354))]
-    for (name, family, size) in layouts {
+    let layouts: [(String, WidgetFamily, CGSize, Int)] = [
+      ("small", .systemSmall, CGSize(width: 158, height: 158), 7),
+      ("small-compact", .systemSmall, CGSize(width: 141, height: 141), 7),
+      ("small-selected", .systemSmall, CGSize(width: 158, height: 158), 3),
+      ("medium", .systemMedium, CGSize(width: 338, height: 158), 7),
+      ("large", .systemLarge, CGSize(width: 338, height: 354), 7)]
+    for (name, family, size, count) in layouts {
       for dark in [false, true] {
-        let view = QiyouWidgetView(entry: QiyouEntry(date: now, snapshot: snapshot), resources: resources, contentPadding: 0)
+        let selected = WidgetSnapshot(version: snapshot.version, updatedAt: snapshot.updatedAt,
+          signDay: snapshot.signDay, connected: true, games: Array(games.prefix(count)))
+        let view = QiyouWidgetView(entry: QiyouEntry(date: now, snapshot: selected), resources: resources, contentPadding: 0)
           .environment(\.widgetFamily, family).environment(\.colorScheme, dark ? .dark : .light)
           .padding(16).background(dark ? Color.black : Color.white)
           .frame(width: size.width, height: size.height).ignoresSafeArea()

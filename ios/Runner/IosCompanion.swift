@@ -90,6 +90,7 @@ final class IosCompanion {
           var calendar = Calendar(identifier: .gregorian)
           calendar.timeZone = TimeZone(secondsFromGMT: 0)!
           var date = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: reminder.date)
+          date.calendar = calendar
           date.timeZone = calendar.timeZone
           let trigger = UNCalendarNotificationTrigger(dateMatching: date, repeats: false)
           group.enter()

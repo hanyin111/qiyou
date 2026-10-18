@@ -29,17 +29,20 @@ struct QiyouWidgetView: View {
   var contentPadding: CGFloat? = nil
   private var small: Bool { family == .systemSmall }
   private var large: Bool { family == .systemLarge }
+  private var relaxed: Bool { small && entry.snapshot.games.count <= 4 }
   private var columns: Int { family == .systemMedium ? 3 : 2 }
   var body: some View {
     GeometryReader { geometry in
+      let compact = small && geometry.size.height < 120
       let rows = max(1, Int(ceil(Double(entry.snapshot.games.count) / Double(columns))))
-      let cellHeight = max(18, (geometry.size.height - (small ? 34 : 36) - CGFloat(rows - 1) * 4) / CGFloat(rows))
-      VStack(alignment: .leading, spacing: 4) {
+      let gap: CGFloat = compact ? 3 : 4
+      let cellHeight = max(16, (geometry.size.height - (compact ? 24 : small ? 34 : 36) - CGFloat(rows - 1) * gap) / CGFloat(rows))
+      VStack(alignment: .leading, spacing: compact ? 2 : 4) {
         HStack(spacing: 4) {
-          Text("栖游").font(harmony(small ? 11 : 13, bold: true))
+          Text("栖游").font(harmony(compact ? 9 : small ? 11 : 13, bold: true))
           Spacer(minLength: 0)
           Text(entry.preview ? "示例" : "体力 · 签到").font(harmony(small ? 8 : 10)).foregroundColor(.secondary)
-        }.frame(height: 16)
+        }.frame(height: compact ? 12 : 16)
         if entry.snapshot.games.isEmpty {
           Spacer(minLength: 0)
           Text(entry.snapshot.connected ? "在设置中选择游戏" : "打开栖游连接账号")
@@ -47,9 +50,9 @@ struct QiyouWidgetView: View {
           Spacer(minLength: 0)
         } else {
           LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: columns),
-            alignment: .leading, spacing: 4) {
+            alignment: .leading, spacing: gap) {
             ForEach(entry.snapshot.games) { game in
-              cell(game).frame(height: cellHeight)
+              cell(game, compact: compact).frame(height: cellHeight)
             }
           }
         }
@@ -63,17 +66,18 @@ struct QiyouWidgetView: View {
           if entry.snapshot.games.contains(where: { !$0.isFresh(at: entry.date) }) {
             Text("· 待刷新").font(harmony(small ? 7 : 9))
           }
-        }.foregroundColor(.secondary).frame(height: small ? 10 : 12)
+        }.foregroundColor(.secondary).frame(height: compact ? 8 : small ? 10 : 12)
       }
     }.padding(contentPadding ?? (small ? 9 : 12))
   }
 
-  private func cell(_ game: WidgetGameState) -> some View {
+  private func cell(_ game: WidgetGameState, compact: Bool) -> some View {
     let fresh = game.isFresh(at: entry.date)
     let sign = entry.snapshot.sign(for: game, at: entry.date)
-    return HStack(spacing: small ? 5 : 7) {
+    let icon: CGFloat = small ? relaxed ? 25 : compact ? 16 : 20 : large ? 34 : 26
+    return HStack(spacing: compact ? 4 : small ? 5 : 7) {
       Image(game.game.rawValue, bundle: resources).resizable().scaledToFill()
-        .frame(width: small ? 20 : large ? 34 : 26, height: small ? 20 : large ? 34 : 26)
+        .frame(width: icon, height: icon)
         .clipShape(RoundedRectangle(cornerRadius: small ? 5 : 7))
         .overlay(
           Image(systemName: signSymbol(sign))
@@ -83,12 +87,12 @@ struct QiyouWidgetView: View {
             .offset(x: 2, y: 2)
         , alignment: .bottomTrailing)
       VStack(alignment: .leading, spacing: large ? 4 : 1) {
-        if !small {
-          Text(game.game.title).font(harmony(large ? 13 : 10, bold: true)).lineLimit(1)
+        if !small || relaxed {
+          Text(game.game.title).font(harmony(large ? 13 : relaxed ? 9 : 10, bold: true)).lineLimit(1)
         }
         Text(fresh ? "\(game.energy ?? 0)/\(game.capacity ?? 0)" : "—")
-          .font(harmony(small ? 10 : large ? 16 : 12, bold: true))
-          .monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+          .font(harmony(small ? relaxed ? 12 : compact ? 9 : 10 : large ? 16 : 12, bold: true))
+          .lineLimit(1).minimumScaleFactor(0.7)
         if small && game.roleCount > 1 {
           Text(sign == .unknown ? "待刷新" : "\(game.signedRoles)/\(game.roleCount) 已签").font(harmony(6)).foregroundColor(.secondary)
         }
