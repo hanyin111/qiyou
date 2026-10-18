@@ -35,6 +35,7 @@ migrate_working_dir/
 /.tooling/
 /docs/screenshots/
 /dist/
+/ios/WidgetPreviewHost/CaptchaFixtures.json
 *.exe.WebView2/
 **/local.properties
 **/key.properties

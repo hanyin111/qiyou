@@ -4,6 +4,88 @@ import XCTest
 @testable import WidgetPreviewHost
 
 final class BrowserCookieTests: XCTestCase {
+  func testPublicLoginCaptchaRendersFromBlankOrigin() throws {
+    // Uses the exact production Dart document, real public SDK and public Kuro
+    // site key. Only renders the button; never solves or submits a CAPTCHA.
+    let fixture = try captchaDocument("v4")
+    let loaded = expectation(description: "Official CAPTCHA ready on about:blank")
+    let messages = CaptchaMessages(loaded)
+    let config = captchaConfiguration(messages)
+    let web = WKWebView(frame: CGRect(x: 0, y: 0, width: 390, height: 600), configuration: config)
+    let host = UIViewController()
+    let window = UIWindow(frame: web.frame)
+    host.view = web; window.rootViewController = host; window.makeKeyAndVisible()
+    defer { window.isHidden = true }
+    let navigation = CaptchaPageNavigation()
+    web.navigationDelegate = navigation
+    // Same WKWebView entry point as flutter_inappwebview's loadData.
+    web.load(Data(fixture.utf8), mimeType: "text/html", characterEncodingName: "utf8",
+             baseURL: URL(string: "about:blank")!)
+    wait(for: [loaded], timeout: 40)
+    XCTAssertEqual(messages.phase, "ready", "Public SDK failed: \(messages.reason)")
+    XCTAssertTrue(navigation.allowedBlankPage)
+    let rendered = expectation(description: "Real official CAPTCHA button has visible bounds")
+    web.evaluateJavaScript("""
+      (() => { const e = document.getElementById('captcha');
+      return e.children.length > 0 && e.getBoundingClientRect().width > 100 &&
+        e.getBoundingClientRect().height >= 40 && document.getElementById('status').hidden; })()
+      """
+    ) { result, error in
+      XCTAssertNil(error); XCTAssertEqual(result as? Bool, true); rendered.fulfill()
+    }
+    wait(for: [rendered], timeout: 5)
+  }
+
+  func testBothLoginCaptchaVersionsReportBlockedSDKInsteadOfBlankLoading() throws {
+    let compiled = expectation(description: "Test-only network block rule ready")
+    var rule: WKContentRuleList?
+    WKContentRuleListStore.default().compileContentRuleList(
+      forIdentifier: "qiyou-captcha-offline-test",
+      encodedContentRuleList: """
+        [{"trigger":{"url-filter":".*geetest[.]com.*"},"action":{"type":"block"}}]
+        """
+    ) { result, error in
+      XCTAssertNil(error); rule = result; compiled.fulfill()
+    }
+    wait(for: [compiled], timeout: 5)
+    let block = try XCTUnwrap(rule)
+    for version in ["v3", "v4"] {
+      let failed = expectation(description: "\(version) reports resource error")
+      let messages = CaptchaMessages(failed)
+      let config = captchaConfiguration(messages)
+      config.userContentController.add(block)
+      let web = WKWebView(frame: CGRect(x: 0, y: 0, width: 390, height: 600), configuration: config)
+      let fixture = try captchaDocument(version)
+      web.load(Data(fixture.utf8), mimeType: "text/html", characterEncodingName: "utf8",
+               baseURL: URL(string: "about:blank")!)
+      wait(for: [failed], timeout: 10)
+      XCTAssertEqual(messages.phase, "error")
+      XCTAssertEqual(messages.reason, "resource")
+    }
+  }
+
+  private func captchaDocument(_ version: String) throws -> String {
+    let url = try XCTUnwrap(Bundle(for: BrowserCookieTests.self).url(forResource: "CaptchaFixtures", withExtension: "json"))
+    let fixtures = try JSONDecoder().decode([String: String].self, from: Data(contentsOf: url))
+    return try XCTUnwrap(fixtures[version])
+  }
+
+  private func captchaConfiguration(_ messages: CaptchaMessages) -> WKWebViewConfiguration {
+    let config = WKWebViewConfiguration()
+    config.websiteDataStore = .nonPersistent()
+    config.userContentController.add(messages, name: "captcha")
+    config.userContentController.addUserScript(WKUserScript(source: """
+      window.flutter_inappwebview = { callHandler: function(name, message) {
+        if (name === 'qiyouLoginCaptcha') {
+          window.webkit.messageHandlers.captcha.postMessage({
+            nonce:message.nonce,phase:message.phase,reason:message.reason || ''
+          });
+        }
+      }};
+      """, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+    return config
+  }
+
   func testPrivateHttpOnlyCookiesComeFromBoundWebView() throws {
     let root = UIView(frame: CGRect(x: 0, y: 0, width: 400, height: 400))
     let window = UIWindow(frame: root.frame)
@@ -94,6 +176,27 @@ final class BrowserCookieTests: XCTestCase {
       if case .success = response { XCTFail("Untrusted target accepted") }
     }
     XCTAssertFalse(readRoots)
+  }
+}
+
+private final class CaptchaMessages: NSObject, WKScriptMessageHandler {
+  private let done: XCTestExpectation
+  var phase = "", reason = ""
+  init(_ done: XCTestExpectation) { self.done = done }
+  func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+    guard let value = message.body as? [String: String], value["nonce"] == "synthetic-nonce",
+          phase.isEmpty, let received = value["phase"], ["ready", "error"].contains(received) else { return }
+    phase = received; reason = value["reason"] ?? ""; done.fulfill()
+  }
+}
+
+private final class CaptchaPageNavigation: NSObject, WKNavigationDelegate {
+  var allowedBlankPage = false
+  func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
+               decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+    let allowed = action.targetFrame?.isMainFrame != true || action.request.url?.absoluteString == "about:blank"
+    if allowed && action.targetFrame?.isMainFrame == true { allowedBlankPage = true }
+    decisionHandler(allowed ? .allow : .cancel)
   }
 }
 

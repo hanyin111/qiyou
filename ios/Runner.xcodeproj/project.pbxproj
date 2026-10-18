@@ -52,6 +52,7 @@
 		71D4BC08044C08D0C36B3FE3 /* Preview HarmonyOS_Sans_SC_Bold.ttf */ = { isa = PBXBuildFile; fileRef = BB23BA6B09555F6814C6AAA7; };
 		3DD736989AA7BA6817A89A87 /* Preview LICENSE.txt */ = { isa = PBXBuildFile; fileRef = 8C67812823B8BB285071152C; };
 		F9684D51FC8DE8F2328902BA /* PreviewTests WidgetTests.swift */ = { isa = PBXBuildFile; fileRef = B0ECEF11F98188CEF14CBD97; };
+		C37173EA034642598CEA0201 /* CAPTCHA fixtures in Resources */ = {isa = PBXBuildFile; fileRef = C37173EA034642598CEA0202; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -126,6 +127,7 @@
 		B0ECEF11F98188CEF14CBD97 /* WidgetTests.swift */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WidgetPreviewHost/WidgetTests.swift"; sourceTree = SOURCE_ROOT; };
 		B47E911AF16FDB251B53DBBE /* WidgetPreviewHost.app */ = { isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WidgetPreviewHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B292E154F94ECB56AA3979A2 /* WidgetTests.xctest */ = { isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WidgetTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C37173EA034642598CEA0202 /* CaptchaFixtures.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "WidgetPreviewHost/CaptchaFixtures.json"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -169,6 +171,7 @@
 				9740EEB11CF90186004384FC /* Flutter */,
 				C37173EA034642598CEA0104 /* BrowserCookieBridge.swift */,
 				C37173EA034642598CEA0105 /* BrowserCookieTests.swift */,
+				C37173EA034642598CEA0202 /* CaptchaFixtures.json */,
 				C37173EA034642598CEA0008 /* Widget InfoPlist.strings */,
 				B66C9639510EA1612BCE9B5D /* iOS Companion */,
 				BE2591C89E3801A170F7F6D1 /* Widget Preview Tests */,
@@ -327,7 +330,7 @@
 		};
 		C20E3D4A02275DA1D3A14CE9 /* Widget Resources */ = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (C37173EA034642598CEA0002,90F663E7765B0206A9EBA7CA,C017879117B4BEB0FD0504ED,4688CD119987CFFEBBF60F12,8B8F29A449FBFEA576E6B5BF,9659A93CD07BE475BC26379F,340B0962B3AB1109A6AC30E0,8579834636F266EF0B9B0BC9,FC05538F6FFFA8DBF53DDF3A,566DA25D263AB88849C270ED,165C2E3FC5C442E2C96F130A); runOnlyForDeploymentPostprocessing = 0; };
 		165AE7725E8017C3B18BD179 /* Preview Resources */ = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (1D60AAD29A37CF59C0826C1A,3CE3270B2C718E3D143CAA07,2FE4B1440ACBF766F14D63E1,7CD524899A74E1B4327EFD18,97E82CC0BFE8281A3973E3C3,1ABE3AF526E7A42E29F121D9,D003A3C04FFD0D4130CD0C85,5AB7CCB2BF74D3717BA8752B,71D4BC08044C08D0C36B3FE3,3DD736989AA7BA6817A89A87); runOnlyForDeploymentPostprocessing = 0; };
-		9AFB1D3E1393B72A8AE5C8C8 /* PreviewTests Resources */ = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		9AFB1D3E1393B72A8AE5C8C8 /* PreviewTests Resources */ = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (C37173EA034642598CEA0201); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */

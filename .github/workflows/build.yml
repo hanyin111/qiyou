@@ -72,6 +72,8 @@ jobs:
       - run: flutter pub get
       - name: Test native snapshot and notification planning
         run: swift test --package-path ios/CompanionCore
+      - name: Export production login CAPTCHA documents for WebKit tests
+        run: dart run scripts/export_login_captcha.dart
       - run: plutil -lint ios/Runner.xcodeproj/project.pbxproj ios/Runner/Runner.entitlements ios/Runner/Info.plist ios/QiyouWidget/Info.plist ios/QiyouWidget/QiyouWidget.entitlements ios/Runner/en.lproj/InfoPlist.strings ios/Runner/zh-Hans.lproj/InfoPlist.strings ios/QiyouWidget/en.lproj/InfoPlist.strings ios/QiyouWidget/zh-Hans.lproj/InfoPlist.strings
       - run: flutter build ios --release --no-codesign
       - name: Preserve shared group entitlements for personal resigning
@@ -105,7 +107,7 @@ jobs:
           xcrun simctl bootstatus "$QIYOU_IOS_SIMULATOR" -b
           xcrun simctl spawn "$QIYOU_IOS_SIMULATOR" log stream --level info --style compact --predicate 'process == "Runner" OR process == "WidgetPreviewHost" OR process == "testmanagerd"' > build/ios-simulator.log 2>&1 &
           echo $! > build/ios-simulator-log.pid
-      - name: Test private browser cookies and render native widgets
+      - name: Test login CAPTCHA, private browser cookies and native widgets
         timeout-minutes: 10
         run: xcodebuild test -workspace ios/Runner.xcworkspace -scheme WidgetPreviewHost -configuration Debug -destination "platform=iOS Simulator,id=$QIYOU_IOS_SIMULATOR" -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 -test-timeouts-enabled YES -default-test-execution-time-allowance 120 -maximum-test-execution-time-allowance 180 -resultBundlePath build/ios-widget-tests.xcresult CODE_SIGNING_ALLOWED=NO
       - name: Collect widget screenshots

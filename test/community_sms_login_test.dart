@@ -188,4 +188,42 @@ void main() {
     expect(CommunitySmsLoginClient.encryptPhone('13800000000'),
         isNot(CommunitySmsLoginClient.encryptPhone('13800000000')));
   });
+  test('Miyoushe accepts an Aigis v4 login task without a v3 challenge',
+      () async {
+    var calls = 0;
+    final client = CommunitySmsLoginClient(Community.miyoushe,
+        transport: MockClient((r) async {
+      calls++;
+      if (calls == 1) {
+        return http.Response(jsonEncode({'retcode': -3101}), 200, headers: {
+          'x-rpc-aigis': jsonEncode({
+            'session_id': 'synthetic-session',
+            'data': jsonEncode({'gt': 'synthetic-v4-id'})
+          })
+        });
+      }
+      final aigis = r.headers['x-rpc-aigis']!.split(';');
+      expect(aigis.first, 'synthetic-session');
+      final proof = jsonDecode(utf8.decode(base64Decode(aigis.last)));
+      expect(proof['captcha_id'], 'synthetic-v4-id');
+      expect(proof['pass_token'], 'synthetic-pass');
+      return http.Response(
+          jsonEncode({
+            'retcode': 0,
+            'data': {'action_type': 'login'}
+          }),
+          200);
+    }));
+    addTearDown(client.close);
+    await client.sendCode('13800000000', solve: (challenge) async {
+      expect(challenge.isV4, isTrue);
+      return {
+        'lot_number': 'synthetic-lot',
+        'captcha_output': 'synthetic-output',
+        'pass_token': 'synthetic-pass',
+        'gen_time': '123'
+      };
+    });
+    expect(calls, 2);
+  });
 }

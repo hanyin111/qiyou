@@ -439,7 +439,7 @@ class MiyousheClient implements CommunityClient {
           ...?body?.values.whereType<String>()
         ]);
         await writeVerificationDiagnostic({
-          'version': '0.1.16',
+          'version': '0.1.17',
           'stage': stage!.name,
           'game': recordGame?.name,
           'retcode': code,
