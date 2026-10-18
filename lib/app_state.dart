@@ -53,7 +53,8 @@ class AppState extends ChangeNotifier {
     final operation = _companionQueue.then((_) async {
       try {
         final available = await companion.publish(payload);
-        companionError = available ? null : '小组件共享空间未就绪，请检查 iOS App Groups 配置。';
+        companionError =
+            available ? null : '当前签名未提供可用的小组件共享空间。请使用保留小组件与共享组权限的新版重新签名安装。';
       } catch (_) {
         companionError = '小组件或体力提醒暂未更新，请稍后刷新重试。';
       }

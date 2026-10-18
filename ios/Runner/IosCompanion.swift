@@ -55,8 +55,7 @@ final class IosCompanion {
     }
   }
   private func store(_ snapshot: WidgetSnapshot) -> Bool {
-    guard let directory = FileManager.default.containerURL(
-      forSecurityApplicationGroupIdentifier: CompanionConstants.group),
+    guard let directory = CompanionGroup.directory(),
       let data = try? JSONEncoder().encode(snapshot) else { return false }
     do {
       try data.write(to: directory.appendingPathComponent(CompanionConstants.file),

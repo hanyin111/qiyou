@@ -2,6 +2,19 @@ import XCTest
 @testable import CompanionCore
 
 final class WidgetSnapshotTests: XCTestCase {
+  func testResignedAppGroupsPreferTheAuthorizedTeamSuffix() throws {
+    let group = CompanionConstants.group + ".ABCDEFGHIJ"
+    let plist: [String: Any] = ["Entitlements": [
+      "com.apple.security.application-groups": ["group.unrelated", group]
+    ]]
+    let xml = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+    let cmsLike = Data([0x30, 0x82, 0, 1]) + xml + Data([0, 0])
+    XCTAssertEqual(CompanionGroup.profileGroups(cmsLike), ["group.unrelated", group])
+    XCTAssertEqual(CompanionGroup.candidates(profile: cmsLike, infoGroups: [group]),
+      [group, CompanionConstants.group])
+    XCTAssertEqual(CompanionGroup.candidates(profile: Data([0, 1]),
+      infoGroups: ["group.unrelated", "group.app.qiyou.qiyou.bad/path"]), [CompanionConstants.group])
+  }
   let now = Date(timeIntervalSince1970: 1792281600) // 2026-10-18 00:00 UTC
   func game(synced: Int64? = 1792281600000) -> WidgetGameState {
     WidgetGameState(game: .genshin, roleCount: 1, signedRoles: 1, sign: .signed,

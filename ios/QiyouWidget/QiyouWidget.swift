@@ -27,8 +27,7 @@ struct QiyouProvider: TimelineProvider {
     completion(Timeline(entries: entries, policy: .after(now.addingTimeInterval(3600))))
   }
   private func load() -> WidgetSnapshot {
-    guard let directory = FileManager.default.containerURL(
-      forSecurityApplicationGroupIdentifier: CompanionConstants.group),
+    guard let directory = CompanionGroup.directory(),
       let data = try? Data(contentsOf: directory.appendingPathComponent(CompanionConstants.file)),
       let snapshot = try? WidgetSnapshot.decode(data) else { return .empty }
     return snapshot

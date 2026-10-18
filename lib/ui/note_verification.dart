@@ -81,6 +81,7 @@ class _NoteVerificationPageState extends State<NoteVerificationPage> {
       submitting = false,
       complete = false,
       preparing = false;
+  bool preparationStarted = false;
   String progressMessage = '正在初始化官方设备会话…';
   Timer? timeout;
 
@@ -90,6 +91,7 @@ class _NoteVerificationPageState extends State<NoteVerificationPage> {
     setState(() {
       loading = true;
       preparing = true;
+      preparationStarted = false;
       progressMessage = '正在初始化官方设备会话…';
       ready = false;
       error = null;
@@ -98,11 +100,21 @@ class _NoteVerificationPageState extends State<NoteVerificationPage> {
           .map((b) => b.toRadixString(16).padLeft(2, '0'))
           .join();
     });
+    final attempt = nonce;
+    timeout = Timer(const Duration(seconds: 40), () {
+      if (mounted && nonce == attempt && preparing) {
+        setState(() {
+          loading = false;
+          preparing = false;
+          error = '官方设备会话初始化超时，请重新加载。';
+        });
+      }
+    });
   }
 
   Future<void> prepare(
       InAppWebViewController controller, String attempt) async {
-    bool active() => mounted && nonce == attempt;
+    bool active() => mounted && nonce == attempt && error == null;
     try {
       final account = widget.state.accounts
           .firstWhere((a) => a.id == widget.entry.accountId);
@@ -124,6 +136,7 @@ class _NoteVerificationPageState extends State<NoteVerificationPage> {
       setState(() => progressMessage = '正在获取验证码…');
       final value = await widget.state.createNoteVerification(widget.entry);
       if (!active()) return;
+      timeout?.cancel();
       controller.addJavaScriptHandler(
           handlerName: 'qiyouCaptcha',
           callback: (args) => handleCaptcha(args, attempt));
@@ -142,7 +155,7 @@ class _NoteVerificationPageState extends State<NoteVerificationPage> {
     } catch (_) {
       if (active()) setState(() => error = '未能初始化验证会话，请稍后重试。');
     } finally {
-      if (active()) {
+      if (mounted && nonce == attempt) {
         setState(() {
           loading = false;
           preparing = false;
@@ -225,44 +238,45 @@ class _NoteVerificationPageState extends State<NoteVerificationPage> {
                                     error == null)
                                   SizedBox(
                                       height: 440,
-                                      child: IgnorePointer(
-                                          ignoring: preparing,
-                                          child: Opacity(
-                                              opacity: preparing ? 0 : 1,
-                                              child: InAppWebView(
-                                                key: ValueKey(nonce),
-                                                initialData:
-                                                    InAppWebViewInitialData(
-                                                        data: '<html></html>'),
-                                                initialSettings:
-                                                    InAppWebViewSettings(
-                                                        incognito: true,
-                                                        isInspectable: false,
-                                                        useShouldOverrideUrlLoading:
-                                                            true,
-                                                        allowFileAccess: false,
-                                                        allowContentAccess:
-                                                            false,
-                                                        saveFormData: false),
-                                                onWebViewCreated:
-                                                    (controller) => prepare(
-                                                        controller, nonce),
-                                                shouldOverrideUrlLoading: (_,
-                                                        action) async =>
-                                                    action.isForMainFrame &&
-                                                            action.request.url
-                                                                    ?.toString() !=
-                                                                'about:blank' &&
-                                                            !(preparing &&
-                                                                isOfficialLoginUrl(
-                                                                    action
-                                                                        .request
-                                                                        .url))
-                                                        ? NavigationActionPolicy
-                                                            .CANCEL
-                                                        : NavigationActionPolicy
-                                                            .ALLOW,
-                                              )))),
+                                      child: InAppWebView(
+                                        key: ValueKey(nonce),
+                                        initialUrlRequest: URLRequest(
+                                            url: WebUri(
+                                                'https://www.miyoushe.com/ys/')),
+                                        initialSettings:
+                                            officialLoginSettings(),
+                                        onLoadStop: (controller, url) {
+                                          if (preparing &&
+                                              !preparationStarted &&
+                                              isOfficialLoginUrl(url)) {
+                                            preparationStarted = true;
+                                            prepare(controller, nonce);
+                                          }
+                                        },
+                                        onReceivedError: (_, request, failure) {
+                                          if (request.isForMainFrame == true &&
+                                              mounted &&
+                                              preparing) {
+                                            timeout?.cancel();
+                                            setState(() {
+                                              loading = false;
+                                              preparing = false;
+                                              error = '米游社官方页面未能加载，请检查网络后重试。';
+                                            });
+                                          }
+                                        },
+                                        shouldOverrideUrlLoading: (_,
+                                                action) async =>
+                                            action.isForMainFrame &&
+                                                    action.request.url
+                                                            ?.toString() !=
+                                                        'about:blank' &&
+                                                    !(preparing &&
+                                                        isOfficialLoginUrl(
+                                                            action.request.url))
+                                                ? NavigationActionPolicy.CANCEL
+                                                : NavigationActionPolicy.ALLOW,
+                                      )),
                                 if (loading ||
                                     (verification != null &&
                                         !ready &&

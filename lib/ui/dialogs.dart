@@ -5,6 +5,7 @@ import '../domain/models.dart';
 import '../data/miyoushe_client.dart';
 import 'design.dart';
 import 'official_login.dart';
+import 'community_sms_login.dart';
 import 'taygedo_login.dart';
 
 Future<void> showGameDetails(BuildContext context, AppState state,
@@ -226,7 +227,7 @@ class _ConnectDialogState extends State<ConnectDialog> {
                                                             Community.taygedo
                                                         ? TaygedoLoginPage(
                                                             widget.state)
-                                                        : OfficialLoginPage(
+                                                        : CommunitySmsLoginPage(
                                                             widget.state,
                                                             community:
                                                                 community)));
@@ -238,7 +239,7 @@ class _ConnectDialogState extends State<ConnectDialog> {
                                 icon: Icon(Icons.login, size: 18),
                                 label: Text(community == Community.taygedo
                                     ? '连接塔吉多'
-                                    : '打开官方页面登录'))),
+                                    : '手机号验证码登录'))),
                         SizedBox(height: 20),
                       ],
                       Text(

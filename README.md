@@ -41,6 +41,8 @@ Windows 米游社登录、签到及 0.1.5 人工验证码完成后读取体力�
 
 0.1.15 修复 iOS 官方登录：米游社改为读取当前无痕 WebView 的 Cookie，库街区使用桌面 UA 和桌面内容模式。保留中文显示名称的侧载兼容修复；Actions 直接输出未签名 IPA。原理与真机验收边界见 [iOS 登录说明](docs/ios-login.md)。
 
+0.1.16 增加米游社、库街区的独立短信登录表单；塔吉多默认短信登录并自动保存 refreshToken。修复米游社便笺验证初始化和侧载共享组命名，打包时保留供个人重签名使用的共享权限声明。说明及真机验收边界见 [0.1.16 登录与小组件适配](docs/ios-login-0.1.16.md)。
+
 ```sh
 flutter pub get
 flutter run -d chrome

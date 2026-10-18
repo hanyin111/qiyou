@@ -7,6 +7,38 @@ enum CompanionConstants {
   static let notificationPrefix = "qiyou.energy."
 }
 
+enum CompanionGroup {
+  static func profileGroups(_ data: Data) -> [String] {
+    guard data.count <= 2_000_000,
+          let start = data.range(of: Data("<?xml".utf8)) ?? data.range(of: Data("<plist".utf8)),
+          let end = data.range(of: Data("</plist>".utf8), in: start.lowerBound..<data.endIndex),
+          let plist = try? PropertyListSerialization.propertyList(
+            from: data.subdata(in: start.lowerBound..<end.upperBound), options: [], format: nil) as? [String: Any],
+          let entitlements = plist["Entitlements"] as? [String: Any] else { return [] }
+    return entitlements["com.apple.security.application-groups"] as? [String] ?? []
+  }
+
+  static func candidates(profile: Data?, infoGroups: [String] = []) -> [String] {
+    let declared = (profile.map(profileGroups) ?? []) + infoGroups + [CompanionConstants.group]
+    var seen = Set<String>()
+    return declared.filter { group in
+      (group == CompanionConstants.group || group.hasPrefix(CompanionConstants.group + ".")) &&
+        group.count <= 192 && group.range(of: "^[A-Za-z0-9.-]+$", options: .regularExpression) != nil &&
+        seen.insert(group).inserted
+    }
+  }
+
+  static func directory(bundle: Bundle = .main) -> URL? {
+    let profile = bundle.url(forResource: "embedded", withExtension: "mobileprovision")
+      .flatMap { try? Data(contentsOf: $0, options: .mappedIfSafe) }
+    let groups = candidates(profile: profile,
+      infoGroups: bundle.object(forInfoDictionaryKey: "ALTAppGroups") as? [String] ?? [])
+    return groups.lazy.compactMap {
+      FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: $0)
+    }.first
+  }
+}
+
 enum WidgetGame: String, Codable, CaseIterable {
   case genshin, starRail, zenless, wutheringWaves, punishingGrayRaven
   case nevernessToEverness, towerOfFantasy

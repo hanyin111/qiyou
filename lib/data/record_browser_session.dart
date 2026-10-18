@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'login_session.dart';
@@ -67,6 +68,12 @@ Future<RecordBrowserSession> initializeRecordBrowserSession(
             'secure': true,
             'httpOnly': false
           });
+    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+      // Device-only cookies are not HttpOnly. Write into this private page,
+      // never the plugin's unrelated default WKWebsiteDataStore.
+      await controller.evaluateJavascript(
+          source:
+              'document.cookie = ${jsonEncode('${cookie.key}=${cookie.value}; Domain=.miyoushe.com; Path=/; Secure; SameSite=Lax')};');
     } else {
       await CookieManager.instance().setCookie(
           url: WebUri(url),
@@ -78,7 +85,10 @@ Future<RecordBrowserSession> initializeRecordBrowserSession(
     }
   }
   await controller.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
-  for (var i = 0; i < 55 && isActive(); i++) {
+  final deadline = DateTime.now().add(const Duration(seconds: 32));
+  for (var i = 0;
+      i < 55 && isActive() && DateTime.now().isBefore(deadline);
+      i++) {
     await Future<void>.delayed(const Duration(milliseconds: 500));
     if (!isActive()) break;
     try {

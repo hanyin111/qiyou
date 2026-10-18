@@ -24,7 +24,7 @@ class _TaygedoLoginPageState extends State<TaygedoLoginPage> {
   late final login = TaygedoLoginClient(platform: defaultTargetPlatform.name);
   Timer? timer;
   bool busy = false;
-  bool importSession = true, acceptSms = false;
+  bool importSession = false, acceptSms = false;
   int remaining = 0;
   String? sentPhone, error;
   @override
@@ -146,8 +146,8 @@ class _TaygedoLoginPageState extends State<TaygedoLoginPage> {
                     const SizedBox(height: 22),
                     SegmentedButton<bool>(
                         segments: const [
-                          ButtonSegment(value: true, label: Text('导入会话')),
                           ButtonSegment(value: false, label: Text('短信登录')),
+                          ButtonSegment(value: true, label: Text('高级导入')),
                         ],
                         selected: {
                           importSession
@@ -187,6 +187,9 @@ class _TaygedoLoginPageState extends State<TaygedoLoginPage> {
                           style: TextStyle(
                               fontSize: 12, color: context.palette.secondary)),
                     ] else ...[
+                      Text('验证码登录成功后，访问令牌和 refreshToken 会自动获取并加密保存，无需手动填写。',
+                          style: TextStyle(color: context.palette.secondary)),
+                      const SizedBox(height: 12),
                       Text('短信登录会重新建立完美通行证会话，可能导致同通行证的游戏下线。查询与签到不会自动执行此登录。',
                           style: TextStyle(color: context.palette.error)),
                       CheckboxListTile(
