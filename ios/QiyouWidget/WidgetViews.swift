@@ -23,10 +23,12 @@ private func harmony(_ size: CGFloat, bold: Bool = false) -> Font {
 }
 
 struct QiyouWidgetView: View {
-  @Environment(\.widgetFamily) var family
+  @Environment(\.widgetFamily) private var systemFamily
   let entry: QiyouEntry
   var resources: Bundle = .main
   var contentPadding: CGFloat? = nil
+  var familyOverride: WidgetFamily? = nil
+  private var family: WidgetFamily { familyOverride ?? systemFamily }
   private var small: Bool { family == .systemSmall }
   private var large: Bool { family == .systemLarge }
   private var relaxed: Bool { small && entry.snapshot.games.count <= 4 }

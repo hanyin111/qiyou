@@ -53,8 +53,8 @@ class RunnerTests: XCTestCase {
       for dark in [false, true] {
         let selected = WidgetSnapshot(version: snapshot.version, updatedAt: snapshot.updatedAt,
           signDay: snapshot.signDay, connected: true, games: Array(games.prefix(count)))
-        let view = QiyouWidgetView(entry: QiyouEntry(date: now, snapshot: selected), resources: resources, contentPadding: 0)
-          .environment(\.widgetFamily, family).environment(\.colorScheme, dark ? .dark : .light)
+        let view = QiyouWidgetView(entry: QiyouEntry(date: now, snapshot: selected), resources: resources, contentPadding: 0, familyOverride: family)
+          .environment(\.colorScheme, dark ? .dark : .light)
           .padding(16).background(dark ? Color.black : Color.white)
           .frame(width: size.width, height: size.height).ignoresSafeArea()
         let host = UIHostingController(rootView: view)
@@ -68,12 +68,13 @@ class RunnerTests: XCTestCase {
         host.view.setNeedsLayout()
         host.view.layoutIfNeeded()
         RunLoop.main.run(until: Date().addingTimeInterval(0.15))
-        let image = UIGraphicsImageRenderer(size: size).image { _ in
+        let image: UIImage = UIGraphicsImageRenderer(size: size).image { _ in
           host.view.drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
         }
         let path = folder.appendingPathComponent("\(name)-\(dark ? "dark" : "light").png")
-        try XCTUnwrap(image.pngData()).write(to: path)
-        let attachment = XCTAttachment(image: image)
+        let png: Data = try XCTUnwrap(image.pngData())
+        try png.write(to: path)
+        let attachment: XCTAttachment = XCTAttachment(image: image)
         attachment.name = path.lastPathComponent
         attachment.lifetime = .keepAlways
         add(attachment)
