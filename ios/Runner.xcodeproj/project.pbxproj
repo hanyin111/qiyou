@@ -16,6 +16,23 @@
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
+		E83DF5C12FEB847E19EB4C78 /* Runner IosCompanion.swift */ = { isa = PBXBuildFile; fileRef = F656ACDC6E2CC6571A680DEC /* IosCompanion.swift */; };
+		4473C374865304F60A449E87 /* Runner WidgetSnapshot.swift */ = { isa = PBXBuildFile; fileRef = AFF6073ACB89738CCABB70FC /* WidgetSnapshot.swift */; };
+		EBA41ED077F9DFC9EB19620A /* Runner WidgetViews.swift */ = { isa = PBXBuildFile; fileRef = 21AD8C8130CCC747EFC19674 /* WidgetViews.swift */; };
+		2EB7C13D7AEE1A01CC863193 /* Widget QiyouWidget.swift */ = { isa = PBXBuildFile; fileRef = 0195E7D8487003327A8701D7 /* QiyouWidget.swift */; };
+		37524D4EFB035A6B0D992326 /* Widget WidgetViews.swift */ = { isa = PBXBuildFile; fileRef = 21AD8C8130CCC747EFC19674 /* WidgetViews.swift */; };
+		BB2A8757AE065E8182843B92 /* Widget WidgetSnapshot.swift */ = { isa = PBXBuildFile; fileRef = AFF6073ACB89738CCABB70FC /* WidgetSnapshot.swift */; };
+		90F663E7765B0206A9EBA7CA /* Widget genshin.png */ = { isa = PBXBuildFile; fileRef = 56D1F6EAA151A05C4BD9036B /* genshin.png */; };
+		C017879117B4BEB0FD0504ED /* Widget starRail.png */ = { isa = PBXBuildFile; fileRef = 3DE0B3127D88D9EF1AB0F52B /* starRail.png */; };
+		4688CD119987CFFEBBF60F12 /* Widget zenless.png */ = { isa = PBXBuildFile; fileRef = DF3FD3ED80BC4F3EB52CABCB /* zenless.png */; };
+		8B8F29A449FBFEA576E6B5BF /* Widget wutheringWaves.png */ = { isa = PBXBuildFile; fileRef = A487C2FEC7C46E57FEC590E5 /* wutheringWaves.png */; };
+		9659A93CD07BE475BC26379F /* Widget punishingGrayRaven.png */ = { isa = PBXBuildFile; fileRef = 19FE4CBE103DD3076A91A110 /* punishingGrayRaven.png */; };
+		340B0962B3AB1109A6AC30E0 /* Widget nevernessToEverness.png */ = { isa = PBXBuildFile; fileRef = A333AE6BE4B108AF10E83B51 /* nevernessToEverness.png */; };
+		8579834636F266EF0B9B0BC9 /* Widget towerOfFantasy.png */ = { isa = PBXBuildFile; fileRef = D22F4BCE875B22F7E03CB73E /* towerOfFantasy.png */; };
+		FC05538F6FFFA8DBF53DDF3A /* Widget HarmonyOS_Sans_SC_Regular.ttf */ = { isa = PBXBuildFile; fileRef = BDCB8980C8DDFAF09E2677EC /* HarmonyOS_Sans_SC_Regular.ttf */; };
+		566DA25D263AB88849C270ED /* Widget HarmonyOS_Sans_SC_Bold.ttf */ = { isa = PBXBuildFile; fileRef = BB23BA6B09555F6814C6AAA7 /* HarmonyOS_Sans_SC_Bold.ttf */; };
+		165C2E3FC5C442E2C96F130A /* Widget LICENSE.txt */ = { isa = PBXBuildFile; fileRef = 8C67812823B8BB285071152C /* LICENSE.txt */; };
+		C97A870D6A66B2A5A892B9D4 /* Embed QiyouWidget */ = { isa = PBXBuildFile; fileRef = 713789733BE815D1A96BC875; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -26,6 +43,7 @@
 			remoteGlobalIDString = 97C146ED1CF9000F007C117D;
 			remoteInfo = Runner;
 		};
+		5D37C8FA7C485423E4DB6A2E /* Widget proxy */ = { isa = PBXContainerItemProxy; containerPortal = 97C146E61CF9000F007C117D; proxyType = 1; remoteGlobalIDString = FFF7926F7873E9335695799C; remoteInfo = QiyouWidget; };
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -39,6 +57,7 @@
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		52069F8CCE9307EC57DDC2C6 /* Embed App Extensions */ = { isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = ""; dstSubfolderSpec = 13; files = (C97A870D6A66B2A5A892B9D4); name = "Embed App Extensions"; runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -59,6 +78,24 @@
 		97C146FD1CF9000F007C117D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F656ACDC6E2CC6571A680DEC /* IosCompanion.swift */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Runner/IosCompanion.swift"; sourceTree = SOURCE_ROOT; };
+		AFF6073ACB89738CCABB70FC /* WidgetSnapshot.swift */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CompanionCore/Sources/CompanionCore/WidgetSnapshot.swift"; sourceTree = SOURCE_ROOT; };
+		0195E7D8487003327A8701D7 /* QiyouWidget.swift */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "QiyouWidget/QiyouWidget.swift"; sourceTree = SOURCE_ROOT; };
+		21AD8C8130CCC747EFC19674 /* WidgetViews.swift */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "QiyouWidget/WidgetViews.swift"; sourceTree = SOURCE_ROOT; };
+		243DFD54A185BAB2A8B2466C /* Widget Info.plist */ = { isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "QiyouWidget/Info.plist"; sourceTree = SOURCE_ROOT; };
+		F547400F608C0924BD0FC919 /* Runner.entitlements */ = { isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Runner/Runner.entitlements"; sourceTree = SOURCE_ROOT; };
+		4CBF6B1FD15BB823C5EC9CB5 /* QiyouWidget.entitlements */ = { isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "QiyouWidget/QiyouWidget.entitlements"; sourceTree = SOURCE_ROOT; };
+		56D1F6EAA151A05C4BD9036B /* genshin.png */ = { isa = PBXFileReference; lastKnownFileType = image.png; path = "../assets/games/genshin.png"; sourceTree = SOURCE_ROOT; };
+		3DE0B3127D88D9EF1AB0F52B /* starRail.png */ = { isa = PBXFileReference; lastKnownFileType = image.png; path = "../assets/games/starRail.png"; sourceTree = SOURCE_ROOT; };
+		DF3FD3ED80BC4F3EB52CABCB /* zenless.png */ = { isa = PBXFileReference; lastKnownFileType = image.png; path = "../assets/games/zenless.png"; sourceTree = SOURCE_ROOT; };
+		A487C2FEC7C46E57FEC590E5 /* wutheringWaves.png */ = { isa = PBXFileReference; lastKnownFileType = image.png; path = "../assets/games/wutheringWaves.png"; sourceTree = SOURCE_ROOT; };
+		19FE4CBE103DD3076A91A110 /* punishingGrayRaven.png */ = { isa = PBXFileReference; lastKnownFileType = image.png; path = "../assets/games/punishingGrayRaven.png"; sourceTree = SOURCE_ROOT; };
+		A333AE6BE4B108AF10E83B51 /* nevernessToEverness.png */ = { isa = PBXFileReference; lastKnownFileType = image.png; path = "../assets/games/nevernessToEverness.png"; sourceTree = SOURCE_ROOT; };
+		D22F4BCE875B22F7E03CB73E /* towerOfFantasy.png */ = { isa = PBXFileReference; lastKnownFileType = image.png; path = "../assets/games/towerOfFantasy.png"; sourceTree = SOURCE_ROOT; };
+		BDCB8980C8DDFAF09E2677EC /* HarmonyOS_Sans_SC_Regular.ttf */ = { isa = PBXFileReference; lastKnownFileType = file; path = "../assets/fonts/HarmonyOS_Sans_SC_Regular.ttf"; sourceTree = SOURCE_ROOT; };
+		BB23BA6B09555F6814C6AAA7 /* HarmonyOS_Sans_SC_Bold.ttf */ = { isa = PBXFileReference; lastKnownFileType = file; path = "../assets/fonts/HarmonyOS_Sans_SC_Bold.ttf"; sourceTree = SOURCE_ROOT; };
+		8C67812823B8BB285071152C /* LICENSE.txt */ = { isa = PBXFileReference; lastKnownFileType = file; path = "../assets/fonts/LICENSE.txt"; sourceTree = SOURCE_ROOT; };
+		713789733BE815D1A96BC875 /* QiyouWidget.appex */ = { isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = QiyouWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -70,6 +107,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		637CBF5A1B03EB93C0CB121D /* Widget Frameworks */ = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -97,6 +135,7 @@
 			isa = PBXGroup;
 			children = (
 				9740EEB11CF90186004384FC /* Flutter */,
+				B66C9639510EA1612BCE9B5D /* iOS Companion */,
 				97C146F01CF9000F007C117D /* Runner */,
 				97C146EF1CF9000F007C117D /* Products */,
 				331C8082294A63A400263BE5 /* RunnerTests */,
@@ -107,6 +146,7 @@
 			isa = PBXGroup;
 			children = (
 				97C146EE1CF9000F007C117D /* Runner.app */,
+				713789733BE815D1A96BC875 /* QiyouWidget.appex */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
 			);
 			name = Products;
@@ -128,6 +168,7 @@
 			path = Runner;
 			sourceTree = "<group>";
 		};
+		B66C9639510EA1612BCE9B5D /* iOS Companion */ = { isa = PBXGroup; children = (F656ACDC6E2CC6571A680DEC,AFF6073ACB89738CCABB70FC,0195E7D8487003327A8701D7,21AD8C8130CCC747EFC19674,243DFD54A185BAB2A8B2466C,F547400F608C0924BD0FC919,4CBF6B1FD15BB823C5EC9CB5,56D1F6EAA151A05C4BD9036B,3DE0B3127D88D9EF1AB0F52B,DF3FD3ED80BC4F3EB52CABCB,A487C2FEC7C46E57FEC590E5,19FE4CBE103DD3076A91A110,A333AE6BE4B108AF10E83B51,D22F4BCE875B22F7E03CB73E,BDCB8980C8DDFAF09E2677EC,BB23BA6B09555F6814C6AAA7,8C67812823B8BB285071152C); name = "iOS Companion"; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -157,11 +198,13 @@
 				97C146EB1CF9000F007C117D /* Frameworks */,
 				97C146EC1CF9000F007C117D /* Resources */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
+				52069F8CCE9307EC57DDC2C6 /* Embed App Extensions */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				E230F6B09BC57B87A790AC05 /* Widget dependency */,
 			);
 			name = Runner;
 			packageProductDependencies = (
@@ -171,6 +214,7 @@
 			productReference = 97C146EE1CF9000F007C117D /* Runner.app */;
 			productType = "com.apple.product-type.application";
 		};
+		FFF7926F7873E9335695799C /* QiyouWidget target */ = { isa = PBXNativeTarget; buildConfigurationList = A8C10D7203EAC0D2B01FF9B1; buildPhases = (30EF585B905F57BE5C0898E0,637CBF5A1B03EB93C0CB121D,C20E3D4A02275DA1D3A14CE9); buildRules = (); dependencies = (); name = QiyouWidget; productName = QiyouWidget; productReference = 713789733BE815D1A96BC875; productType = "com.apple.product-type.app-extension"; };
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -181,6 +225,7 @@
 				LastUpgradeCheck = 1510;
 				ORGANIZATIONNAME = "";
 				TargetAttributes = {
+					FFF7926F7873E9335695799C = { CreatedOnToolsVersion = 16.0; SystemCapabilities = {com.apple.ApplicationGroups.iOS = {enabled = 1;};};};
 					331C8080294A63A400263BE5 = {
 						CreatedOnToolsVersion = 14.0;
 						TestTargetID = 97C146ED1CF9000F007C117D;
@@ -188,6 +233,7 @@
 					97C146ED1CF9000F007C117D = {
 						CreatedOnToolsVersion = 7.3.1;
 						LastSwiftMigration = 1100;
+						SystemCapabilities = {com.apple.ApplicationGroups.iOS = {enabled = 1;};};
 					};
 				};
 			};
@@ -208,6 +254,7 @@
 			projectRoot = "";
 			targets = (
 				97C146ED1CF9000F007C117D /* Runner */,
+				FFF7926F7873E9335695799C /* QiyouWidget */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
 			);
 		};
@@ -232,6 +279,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C20E3D4A02275DA1D3A14CE9 /* Widget Resources */ = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (90F663E7765B0206A9EBA7CA,C017879117B4BEB0FD0504ED,4688CD119987CFFEBBF60F12,8B8F29A449FBFEA576E6B5BF,9659A93CD07BE475BC26379F,340B0962B3AB1109A6AC30E0,8579834636F266EF0B9B0BC9,FC05538F6FFFA8DBF53DDF3A,566DA25D263AB88849C270ED,165C2E3FC5C442E2C96F130A); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
@@ -282,11 +330,16 @@
 			buildActionMask = 2147483647;
 			files = (
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
+				E83DF5C12FEB847E19EB4C78 /* IosCompanion.swift in Sources */,
+				4473C374865304F60A449E87 /* WidgetSnapshot.swift in Sources */,
+				EBA41ED077F9DFC9EB19620A /* WidgetViews.swift in Sources */,
+
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		30EF585B905F57BE5C0898E0 /* Widget Sources */ = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (2EB7C13D7AEE1A01CC863193,37524D4EFB035A6B0D992326,BB2A8757AE065E8182843B92); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -295,6 +348,7 @@
 			target = 97C146ED1CF9000F007C117D /* Runner */;
 			targetProxy = 331C8085294A63A400263BE5 /* PBXContainerItemProxy */;
 		};
+		E230F6B09BC57B87A790AC05 /* Widget dependency */ = { isa = PBXTargetDependency; target = FFF7926F7873E9335695799C; targetProxy = 5D37C8FA7C485423E4DB6A2E; };
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
@@ -360,7 +414,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
@@ -378,6 +432,7 @@
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -486,7 +541,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -537,7 +592,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
@@ -557,6 +612,7 @@
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -579,6 +635,7 @@
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -591,6 +648,9 @@
 			};
 			name = Release;
 		};
+		9BF41A459F8AD9377201DD04 /* Widget Debug */ = { isa = XCBuildConfiguration; baseConfigurationReference = 9740EEB31CF90195004384FC; buildSettings = {APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_ENTITLEMENTS = QiyouWidget/QiyouWidget.entitlements; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)"; ENABLE_USER_SCRIPT_SANDBOXING = YES; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = QiyouWidget/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 14.0; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"); MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)"; PRODUCT_BUNDLE_IDENTIFIER = app.qiyou.qiyou.QiyouWidget; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SKIP_INSTALL = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2";}; name = Debug; };
+		ECC376CBBA44DDD43085AA29 /* Widget Release */ = { isa = XCBuildConfiguration; baseConfigurationReference = 9740EEB31CF90195004384FC; buildSettings = {APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_ENTITLEMENTS = QiyouWidget/QiyouWidget.entitlements; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)"; ENABLE_USER_SCRIPT_SANDBOXING = YES; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = QiyouWidget/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 14.0; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"); MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)"; PRODUCT_BUNDLE_IDENTIFIER = app.qiyou.qiyou.QiyouWidget; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SKIP_INSTALL = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2";}; name = Release; };
+		B1573E51FE2BEA7FBF539F3B /* Widget Profile */ = { isa = XCBuildConfiguration; baseConfigurationReference = 9740EEB31CF90195004384FC; buildSettings = {APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_ENTITLEMENTS = QiyouWidget/QiyouWidget.entitlements; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)"; ENABLE_USER_SCRIPT_SANDBOXING = YES; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = QiyouWidget/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 14.0; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"); MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)"; PRODUCT_BUNDLE_IDENTIFIER = app.qiyou.qiyou.QiyouWidget; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SKIP_INSTALL = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2";}; name = Profile; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -624,6 +684,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		A8C10D7203EAC0D2B01FF9B1 /* Widget configs */ = { isa = XCConfigurationList; buildConfigurations = (9BF41A459F8AD9377201DD04,ECC376CBBA44DDD43085AA29,B1573E51FE2BEA7FBF539F3B); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */

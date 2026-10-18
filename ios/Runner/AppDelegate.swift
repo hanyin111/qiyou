@@ -1,19 +1,38 @@
 import Flutter
 import UIKit
 import Security
+import UserNotifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+  private let companion = IosCompanion()
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    let launched = super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    UNUserNotificationCenter.current().delegate = self
+    return launched
+  }
+
+  override func userNotificationCenter(_ center: UNUserNotificationCenter,
+      willPresent notification: UNNotification,
+      withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    if notification.request.identifier.hasPrefix(CompanionConstants.notificationPrefix) {
+      if #available(iOS 14.0, *) { completionHandler([.banner, .sound]) }
+      else { completionHandler([.alert, .sound]) }
+    } else {
+      super.userNotificationCenter(center, willPresent: notification, withCompletionHandler: completionHandler)
+    }
   }
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "QiyouDevice")!
+    let companionChannel = FlutterMethodChannel(name: "app.qiyou/companion", binaryMessenger: registrar.messenger())
+    companionChannel.setMethodCallHandler { [weak self] call, result in
+      self?.companion.handle(call, result: result)
+    }
     let channel = FlutterMethodChannel(name: "app.qiyou/device", binaryMessenger: registrar.messenger())
     channel.setMethodCallHandler { call, result in
       var query: [String: Any] = [

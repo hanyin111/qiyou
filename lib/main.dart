@@ -81,6 +81,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState status) {
     if (status == AppLifecycleState.resumed) {
       state.checkDay();
+      unawaited(state.checkCompanionPermission());
+      unawaited(state.updateCompanion());
       setState(() {});
     }
   }
@@ -227,7 +229,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         Spacer(),
         Padding(
             padding: EdgeInsets.only(left: 15),
-            child: Text('v0.1.12',
+            child: Text('v0.1.13',
                 style:
                     TextStyle(fontSize: 10, color: context.palette.secondary))),
       ]));

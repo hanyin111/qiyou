@@ -8,6 +8,7 @@ import 'data/taygedo_client.dart';
 import 'data/record_verification.dart';
 import 'data/record_browser_session.dart';
 import 'data/sync_models.dart';
+import 'data/ios_companion.dart';
 import 'domain/models.dart';
 
 class AppState extends ChangeNotifier {
@@ -15,11 +16,13 @@ class AppState extends ChangeNotifier {
       {MiyousheClient? client,
       CommunityClient? kuro,
       CommunityClient? taygedo,
-      DeviceBridge? bridge})
+      DeviceBridge? bridge,
+      IosCompanionBridge? companion})
       : client = client ?? MiyousheClient(),
         kuro = kuro ?? KuroClient(),
         taygedo = taygedo ?? TaygedoClient(),
-        bridge = bridge ?? DeviceBridge() {
+        bridge = bridge ?? DeviceBridge(),
+        companion = companion ?? IosCompanionBridge() {
     _makeDemo();
   }
   final MiyousheClient client;
@@ -30,6 +33,89 @@ class AppState extends ChangeNotifier {
         Community.taygedo => taygedo,
       };
   final DeviceBridge bridge;
+  final IosCompanionBridge companion;
+  Set<Game> widgetGames = Game.values.toSet();
+  bool fullEnergyReminders = false;
+  String notificationPermission = 'unknown';
+  String? companionError;
+  bool _disposed = false;
+  Future<void> _companionQueue = Future<void>.value();
+
+  Future<void> updateCompanion() async {
+    if (!companion.supported || !storageReady) return;
+    final payload = companionPayload(
+        entries: demo ? [] : entries,
+        selected: widgetGames,
+        signDay: signDay,
+        connected: !demo && accounts.isNotEmpty,
+        remindersEnabled: fullEnergyReminders && !demo,
+        now: DateTime.now());
+    final operation = _companionQueue.then((_) async {
+      try {
+        final available = await companion.publish(payload);
+        companionError = available ? null : '小组件共享空间未就绪，请检查 iOS App Groups 配置。';
+      } catch (_) {
+        companionError = '小组件或体力提醒暂未更新，请稍后刷新重试。';
+      }
+    });
+    _companionQueue = operation;
+    await operation;
+    if (!_disposed) notifyListeners();
+  }
+
+  Future<void> checkCompanionPermission() async {
+    if (!companion.supported) return;
+    try {
+      notificationPermission = await companion.permission();
+    } catch (_) {
+      notificationPermission = 'unknown';
+    }
+    if (!_disposed) notifyListeners();
+  }
+
+  Future<void> setWidgetGame(Game game, bool selected) async {
+    if (busy || !storageReady) throw StateError('请稍后重试');
+    final previous = widgetGames;
+    widgetGames = {...previous};
+    selected ? widgetGames.add(game) : widgetGames.remove(game);
+    busy = true;
+    try {
+      await _persist();
+    } catch (_) {
+      widgetGames = previous;
+      rethrow;
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
+    await updateCompanion();
+  }
+
+  Future<void> setFullEnergyReminders(bool value) async {
+    if (!companion.supported || busy || !storageReady) {
+      throw StateError('请稍后重试');
+    }
+    busy = true;
+    final previous = fullEnergyReminders;
+    try {
+      notificationPermission = await companion.permission(request: value);
+      if (value &&
+          !const {'authorized', 'provisional', 'ephemeral'}
+              .contains(notificationPermission)) {
+        throw StateError('未获得系统通知权限');
+      }
+      fullEnergyReminders = value;
+      await _persist();
+    } catch (_) {
+      fullEnergyReminders = previous;
+      rethrow;
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
+    await updateCompanion();
+  }
+
   SyncConnection? syncConnection;
   bool demo = true,
       busy = false,
@@ -122,6 +208,12 @@ class AppState extends ChangeNotifier {
             .toList();
         hideUid = json['hideUid'] != false;
         dark = json['dark'] == true;
+        fullEnergyReminders = json['fullEnergyReminders'] == true;
+        if (json['widgetGames'] is List) {
+          widgetGames = Game.values
+              .where((g) => (json['widgetGames'] as List).contains(g.name))
+              .toSet();
+        }
         taskDay = json['taskDay'] as String? ?? chinaDay();
         _savedTasks = (json['tasks'] as List? ?? [])
             .map((item) => RoutineTask.fromJson(object(item)))
@@ -150,6 +242,7 @@ class AppState extends ChangeNotifier {
       storageReady = false;
       notice = '本机安全存储暂不可用，当前可以体验演示空间。';
     }
+    await updateCompanion();
     notifyListeners();
   }
 
@@ -255,6 +348,7 @@ class AppState extends ChangeNotifier {
     if (!demo) _savedTasks = tasks;
     _makeDemo();
     activities.clear();
+    await updateCompanion();
     notifyListeners();
   }
 
@@ -387,6 +481,7 @@ class AppState extends ChangeNotifier {
       }
       lastRefresh = DateTime.now();
     } finally {
+      await updateCompanion();
       busy = false;
       notifyListeners();
     }
@@ -442,6 +537,7 @@ class AppState extends ChangeNotifier {
       busy = false;
       notifyListeners();
     }
+    await updateCompanion();
     return demo ? '演示签到完成 · 未发送真实请求' : '已完成 $done / ${pending.length} 个角色的签到';
   }
 
@@ -538,6 +634,7 @@ class AppState extends ChangeNotifier {
               failure.kind != ApiFailure.expired);
       throw failure;
     } finally {
+      await updateCompanion();
       busy = false;
       notifyListeners();
     }
@@ -593,6 +690,7 @@ class AppState extends ChangeNotifier {
       _makeLive();
     }
     activities.clear();
+    await updateCompanion();
     notifyListeners();
     if (!demo) await refresh();
   }
@@ -626,6 +724,7 @@ class AppState extends ChangeNotifier {
         }
       }
       _record('${game.shortTitle}已${hidden ? '移除' : '恢复'}', success: true);
+      await updateCompanion();
     } finally {
       busy = false;
       notifyListeners();
@@ -730,6 +829,7 @@ class AppState extends ChangeNotifier {
       }
       activities.clear();
       _record('已合并云端账号；刷新后读取最新游戏状态');
+      await updateCompanion();
     });
   }
 
@@ -745,6 +845,8 @@ class AppState extends ChangeNotifier {
           .toList(),
       'hideUid': contentsOverride?.hideUid ?? hideUid,
       'dark': contentsOverride?.dark ?? dark,
+      'widgetGames': widgetGames.map((g) => g.name).toList(),
+      'fullEnergyReminders': fullEnergyReminders,
       'taskDay': contentsOverride?.taskDay ?? taskDay,
       'tasks': (contentsOverride?.tasks ?? (demo ? _savedTasks : tasks))
           .map((task) => task.toJson())
@@ -762,6 +864,7 @@ class AppState extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     client.close();
     kuro.close();
     taygedo.close();

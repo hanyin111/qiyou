@@ -4,6 +4,7 @@ import '../domain/models.dart';
 import 'design.dart';
 import 'dashboard.dart';
 import 'sync_page.dart';
+import 'ios_companion_page.dart';
 import 'dialogs.dart' show confirmRemoveGame;
 
 class InfoBanner extends StatelessWidget {
@@ -305,8 +306,21 @@ class SettingsPage extends StatelessWidget {
           _row(context, Icons.schedule_rounded, '后台自动签到',
               '首版暂不支持；打开 App 后可一键签到'),
           Divider(height: 28),
-          _row(context, Icons.notifications_none_rounded, '体力提醒',
-              '首版展示回满倒计时，系统通知尚未接入'),
+          if (state.companion.supported)
+            ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading:
+                    Icon(Icons.widgets_outlined, color: context.palette.accent),
+                title: const Text('小组件与体力提醒', style: TextStyle(fontSize: 14)),
+                subtitle: const Text('自选游戏 · iOS 主屏幕 · 回满通知'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                        builder: (_) => IosCompanionPage(state))))
+          else
+            _row(context, Icons.notifications_none_rounded, '体力提醒',
+                '此平台暂未接入系统通知'),
           Divider(height: 28),
           _row(context, Icons.public_rounded, '支持范围', '米游社、库街区、塔吉多 · 国服'),
           Divider(height: 28),
@@ -328,7 +342,7 @@ class SettingsPage extends StatelessWidget {
           Brand(compact: true),
           Spacer(),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('0.1.12',
+            Text('0.1.13',
                 style: TextStyle(
                     fontSize: 10,
                     letterSpacing: 1,
